@@ -1,31 +1,63 @@
 name: External Cron (Gmail poll + queue drain)
 
-# Vercel Hobby プランは Cron を 1日1回に制限しているため、
-# GitHub Actions から /api/cron/classify を定期実行する。
-# 実行内容: Gmail 未読取り込み → pending キュー消化（Gemini 分類 + Slack 投稿）
+# =====================================================================
+# 目的：Vercel Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避し、
+#       GitHub Actions から /api/cron/classify を定期実行するための外部 Cron。
 #
-# GitHub Actions Cron の最小間隔は 5 分。実際は数分の遅延が発生することがある。
-# また、GitHub Actions の schedule 実行はリポジトリが非アクティブ時に
-# 数時間〜数日遅延する場合がある（GitHub 側の既知の挙動）。
-# 手動実行は Actions → External Cron → Run workflow から。
-# 加えて main への push でも発火するようにして、開発中の PR マージで
-# schedule 遅延を実質カバーする。
-# 緊急 LINE Push（5分以内 SLA）は LINE Webhook 内で同期実行されるため、
-# この Cron が遅延しても SLA には影響しない（影響するのは Gmail 通常経路のみ）。
+# 実行内容：Gmail 未読取り込み → pending キュー消化（Gemini 分類 + Slack 投稿）
 #
-# 必要な GitHub Secrets:
+# ---------------------------------------------------------------------
+# トリガー戦略（3 段構え・信頼性順）
+# ---------------------------------------------------------------------
+#
+# 1. workflow_dispatch（推奨・最も確実）
+#    - GitHub Actions UI から手動発火
+#    - ポートフォリオ用途では動作確認・実機テストの正式手段として使う
+#    - コマンド：gh workflow run cron.yml
+#
+# 2. push: main（PR マージ時に自動発火・確実）
+#    - main への push で必ず 1 回発火
+#    - 開発中の PR マージがそのまま Cron 発火として機能
+#
+# 3. schedule（ベストエフォート・保証なし）
+#    - "*/5 * * * *" と書いても GitHub 側の負荷やリポジトリ活動状況で
+#      **数時間〜数日遅延・スキップされる**（GitHub 公式が明記している既知挙動）
+#    - 特にポートフォリオリポジトリのように commit 頻度が低いと
+#      「非アクティブ扱い」で発火されにくい
+#    - schedule のみに依存せず、必要な時は workflow_dispatch で明示発火する
+#
+# ---------------------------------------------------------------------
+# SLA への影響
+# ---------------------------------------------------------------------
+#
+# - 緊急 LINE Push（クレーム SLA 5 分以内）：
+#   LINE Webhook 内で同期実行されるため、この Cron の遅延は SLA に影響しない
+#
+# - Gmail 通常経路 / 通常メッセージの Slack 投稿：
+#   schedule 遅延の影響を受ける可能性あり
+#   運用者は「投稿が遅い」と感じたら Actions UI から workflow_dispatch で発火する
+#
+# ---------------------------------------------------------------------
+# 必要な GitHub Secrets
+# ---------------------------------------------------------------------
+#
 #   - PRODUCTION_URL : 例 https://multichannel-notification-ai-dev.vercel.app
 #   - CRON_SECRET    : Vercel の環境変数と同じ値
+#
+# =====================================================================
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
-  # 動作確認用に手動トリガーも許可
+  # 【最も確実】手動発火。ポートフォリオでは動作確認の正式手段
   workflow_dispatch:
-  # main への push（PR マージ含む）でも発火。schedule 遅延のカバー用
+
+  # 【確実】main への push（PR マージ含む）で必ず発火
   push:
     branches:
       - main
+
+  # 【ベストエフォート】schedule は保証なし。上記 2 つと併用して信頼性を確保
+  schedule:
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: cron-classify

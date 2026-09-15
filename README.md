@@ -145,6 +145,38 @@
 
 ---
 
+## 定期実行（GitHub Actions External Cron）
+
+Vercel Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避するため、GitHub Actions から `/api/cron/classify` を定期実行しています（`.github/workflows/cron.yml`）。
+
+### トリガー戦略（3 段構え・信頼性順）
+
+| # | トリガー | 信頼性 | 用途 |
+|---|---|---|---|
+| 1 | `workflow_dispatch`（手動） | ✅ 最も確実 | **正式な動作確認手段**・ポートフォリオ用途で運用者が明示発火 |
+| 2 | `push: main`（PR マージ時） | ✅ 確実 | main への push で必ず 1 回発火・開発中の PR マージがそのまま Cron 発火として機能 |
+| 3 | `schedule: "*/5 * * * *"` | 🟡 ベストエフォート | GitHub Actions の schedule は **リポジトリ非アクティブ時に数時間〜数日遅延・スキップされる**既知挙動あり |
+
+### 手動発火手順（推奨）
+
+**GitHub Actions UI から：**
+1. リポジトリの Actions タブを開く
+2. 左メニュー「External Cron」を選択
+3. 「Run workflow」ボタン → main ブランチ → Run
+
+**または GitHub CLI から：**
+```bash
+gh workflow run cron.yml
+```
+
+### SLA への影響
+
+- **緊急 LINE Push（クレーム SLA 5 分以内）**：LINE Webhook 内で同期実行されるため、この Cron の遅延は SLA に影響しない
+- **通常メッセージの Slack 投稿**：schedule 遅延の影響を受ける可能性あり
+- 運用者は「投稿が遅い」と感じたら `workflow_dispatch` で明示発火する
+
+---
+
 ## セットアップ（引き継ぎ開発者向け）
 
 詳細な手順は [`docs/manual-developer.md`](docs/manual-developer.md) を参照してください。
@@ -244,9 +276,9 @@ npx next build
 
 ## ライセンス
 
-[MIT License](./LICENSE) で公開しています。
+本リポジトリのコードは **ポートフォリオ目的**で公開しています。詳細は [LICENSE](./LICENSE) を参照してください。
 
-商用・非商用問わず、コードの利用・改変・再配布が可能です。
-コピー・改変時は LICENSE ファイルの著作権表示を残してください（MIT 標準の条件）。
+**許可：** コードの閲覧・参照・学習目的での利用
+**禁止：** 商用利用・無断複製/再配布・本コードをベースにした製品/サービス開発
 
-**利用例：** 実装の参考にする / 派生プロジェクトを立てる / 一部のロジック（例：LINE 署名検証、Gemini transient retry、fetch キャッシュ回避パターン）を業務で使う など。
+商用利用・導入検討・コラボレーションについては、[ポートフォリオサイト](https://misako-profile-portfolio.vercel.app/) または [LINE 公式アカウント](https://line.me/R/ti/p/@745jejoa) までご相談ください。
