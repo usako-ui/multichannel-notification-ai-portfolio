@@ -6,9 +6,9 @@ import { handleUrgent } from "@/lib/handleUrgent";
 /**
  * Gmail ポーリングロジック（T-07・T-08 再定義：ラベル方式）
  *
- * 方針（Misa 承認済み・ラベル方式）:
+ * 方針（ラベル方式）:
  *   Gmail 側で振り分けルールを設定し、特定ラベル（TARGET_LABEL_NAME）が
- *   付いたメールのみを処理対象とする。処理後はラベル除去 + 既読化して
+ *   付いたメールのみを処理対象とする。処理後はラベル除去して
  *   再処理されないようにする。
  *
  * ⚠️ 全メールを対象にすると私用メールが Slack に流出するため、
@@ -18,7 +18,7 @@ import { handleUrgent } from "@/lib/handleUrgent";
  * 直接呼び出しても動くが、外部公開する場合は必ず認証を付けること。
  */
 
-// Gmail 側で作成するラベル名（Misa が Gmail 上で作成 → 振り分けルール設定）
+// Gmail 側で作成するラベル名（運用者が Gmail 上で作成 → 振り分けルール設定）
 // 環境変数化する必要が出たら GMAIL_TARGET_LABEL 等で切り出す
 const TARGET_LABEL_NAME = "multichannel-inbox";
 
@@ -159,7 +159,7 @@ function extractTextBody(
 
 /**
  * ラベル名から Gmail のラベル ID を解決する
- * ラベルは Misa が Gmail 側で先に作成しておく必要がある
+ * ラベルは運用者が Gmail 側で先に作成しておく必要がある
  */
 async function resolveLabelId(
   gmail: ReturnType<typeof createGmailClient>,
@@ -189,10 +189,15 @@ export async function pollGmailInbox(): Promise<{
     );
   }
 
-  // 対象ラベル付き かつ 未読メールのみ取得
+  // 対象ラベル付きメールのみ取得（既読/未読は問わない）。
+  // 【変更履歴 2026-09-15】UNREAD フィルタを撤廃した。
+  //   運用中に「利用者が Gmail アプリで受信確認 → 未読外れる → poller が拾えない」
+  //   事象が慢性化していた（DB Gmail 経路 4 日間で 0 件）。
+  //   ラベル `multichannel-inbox` のみで判定し、処理後にラベルを外すことで
+  //   「既読・未読問わず 1 回だけ確実に取り込む」動作にする。
   const listRes = await gmail.users.messages.list({
     userId: "me",
-    labelIds: [labelId, "UNREAD"],
+    labelIds: [labelId],
     maxResults: MAX_MESSAGES_PER_RUN,
   });
 
@@ -214,13 +219,26 @@ export async function pollGmailInbox(): Promise<{
         format: "full",
       });
 
-      const rawContent = extractTextBody(
+      const body = extractTextBody(
         detail.data.payload as GmailMessagePart | null,
       ).trim();
 
       // From ヘッダから送信者情報を抽出（Slack 表示・DB 保存用）
       const fromHeader = findHeaderValue(detail.data.payload?.headers, "From");
       const { senderId, senderName } = parseFromHeader(fromHeader);
+
+      // Subject を取得し、件名＋本文で緊急判定と Slack 通知本文を組み立てる。
+      // 【変更履歴 2026-09-15】以前は本文のみで isUrgent 判定していたため、
+      //   「至急対応お願いします」等が件名のみに書かれると緊急検知を取りこぼしていた。
+      const subject = (
+        findHeaderValue(detail.data.payload?.headers, "Subject") ?? ""
+      ).trim();
+      const rawContent = subject ? `【件名】${subject}\n${body}` : body;
+
+      // 【変更履歴 2026-09-15】external_id に 'gmail_' prefix を付与。
+      //   LINE 側は 'line_' prefix と対にすることで、UNIQUE(external_id) 制約下で
+      //   将来的な ID 形式重複を明示的に回避する（既存レコード backfill はしない方針）。
+      const externalId = `gmail_${m.id}`;
 
       if (!rawContent) {
         // 本文なし・添付のみ等はスキップ（Slack 通知しても価値がない）
@@ -230,7 +248,7 @@ export async function pollGmailInbox(): Promise<{
           userId: "me",
           id: m.id,
           requestBody: {
-            removeLabelIds: [labelId, "UNREAD"],
+            removeLabelIds: [labelId],
           },
         });
         continue;
@@ -247,7 +265,7 @@ export async function pollGmailInbox(): Promise<{
         try {
           await handleUrgent({
             channel: "gmail",
-            externalId: m.id,
+            externalId,
             rawContent,
             senderId,
             senderName,
@@ -264,7 +282,7 @@ export async function pollGmailInbox(): Promise<{
         // 通常パス: pending で INSERT。Cron が拾って分類する
         const { error } = await supabase.from("inquiry_queue").insert({
           channel: "gmail",
-          external_id: m.id,
+          external_id: externalId,
           raw_content: rawContent,
           status: "pending",
           sender_id: senderId,
@@ -276,7 +294,10 @@ export async function pollGmailInbox(): Promise<{
         }
       }
 
-      // 処理済みマーク: ラベル除去 + 既読化（再処理防止・冪等性の二重保険）
+      // 処理済みマーク: ラベル除去のみ（既読状態は Gmail 側で自然に管理させる）。
+      // 【変更履歴 2026-09-15】UNREAD 明示除去を撤廃。理由:
+      //   - 受信メールに UNREAD が付いていないケース（利用者による既読後）でも動作させたい
+      //   - ラベル除去のみで「1 回だけ取り込む」冪等性は担保できる（次 Cron ではもう対象外）
       // 緊急パス失敗時はスキップして、次 Cron で再処理させる（QA #3 対応）。
       if (urgentFailed) {
         continue;
@@ -285,7 +306,7 @@ export async function pollGmailInbox(): Promise<{
         userId: "me",
         id: m.id,
         requestBody: {
-          removeLabelIds: [labelId, "UNREAD"],
+          removeLabelIds: [labelId],
         },
       });
 
