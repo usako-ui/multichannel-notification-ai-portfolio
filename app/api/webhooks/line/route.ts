@@ -94,7 +94,10 @@ export async function POST(request: Request): Promise<Response> {
       continue;
     }
 
-    const externalId = ev.message.id;
+    // 【変更履歴 2026-09-15】external_id に 'line_' prefix を付与。
+    //   Gmail 側と対にすることで UNIQUE(external_id) 制約下で ID 形式重複を
+    //   明示的に回避する（既存レコード backfill はしない方針）。
+    const externalId = `line_${ev.message.id}`;
     const rawContent = ev.message.text;
     const senderUserId = ev.source.userId ?? null;
 
