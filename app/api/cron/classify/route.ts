@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { classifyWithGemini, GeminiApiError } from "@/lib/classifyWithGemini";
 import { getSlackChannelId } from "@/lib/slackChannels";
 import { postToSlack } from "@/lib/postToSlack";
-import { pollGmailInbox } from "@/lib/gmailPoller";
+import { pollGmailInbox, ensureGmailWatch } from "@/lib/gmailPoller";
 import { formatChannelLabel } from "@/lib/formatChannelLabel";
 
 /**
@@ -79,6 +79,26 @@ export async function GET(request: Request): Promise<Response> {
   } catch (err) {
     gmailError = err instanceof Error ? err.message : String(err);
     console.error("[Cron Classify] Gmail ポーリング失敗（後段は継続）:", gmailError);
+  }
+
+  // Step 0.5: Gmail Watch 期限チェック / 再登録
+  // Pub/Sub Push（/api/webhooks/gmail-push）を継続受信するには Watch の再登録が必須。
+  // Watch は最大 7 日で期限切れになるため、残り 24h 以下の場合のみ users.watch を叩き直す。
+  // GOOGLE_CLOUD_PROJECT_ID / PUBSUB_TOPIC_NAME 未設定環境ではスキップされる（Preview / ローカル用）。
+  let gmailWatch: {
+    renewed: boolean;
+    expiration: number | null;
+    reason: string;
+  } | null = null;
+  let gmailWatchError: string | null = null;
+  try {
+    gmailWatch = await ensureGmailWatch();
+  } catch (err) {
+    gmailWatchError = err instanceof Error ? err.message : String(err);
+    console.error(
+      "[Cron Classify] Gmail Watch 更新失敗（後段は継続）:",
+      gmailWatchError,
+    );
   }
 
   let pending: PendingInquiry[];
@@ -198,5 +218,7 @@ export async function GET(request: Request): Promise<Response> {
     deferred,
     gmail: gmailResult,
     gmailError,
+    gmailWatch,
+    gmailWatchError,
   });
 }

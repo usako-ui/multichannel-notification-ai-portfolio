@@ -171,6 +171,83 @@ async function resolveLabelId(
 }
 
 /**
+ * Gmail Watch 登録 / 再登録関数
+ *
+ * 目的：
+ *   Gmail Pub/Sub Push（app/api/webhooks/gmail-push）を継続的に受信するには
+ *   users.watch を定期的に叩き直す必要がある（Google 側の Watch 有効期限は最大 7 日）。
+ *
+ * 呼び出し方針：
+ *   既存 Cron（/api/cron/classify）内で pollGmailInbox の後に呼ぶ。
+ *   キャッシュした expiration が「残り 24 時間以下」または「未取得」の場合のみ
+ *   users.watch を再発行する。冪等（何度呼んでも Watch は上書きされる）だが
+ *   Gmail API の quota を無駄食いしないためインメモリキャッシュで頻度を抑える。
+ *
+ * ⚠️ Vercel Function インスタンスがコールドスタートすると cachedWatchExpiration は
+ *    リセットされるため、その時点で 1 回 watch が走る。これは意図した挙動
+ *    （インスタンス寿命は長くて数十分なので実質毎時 1 回程度に収まる）。
+ */
+let cachedWatchExpiration: number | null = null;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export async function ensureGmailWatch(): Promise<{
+  renewed: boolean;
+  expiration: number | null;
+  reason: string;
+}> {
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+  const topicName = process.env.PUBSUB_TOPIC_NAME;
+
+  // Push が未有効化の環境（ローカル・Preview 等）ではスキップして Cron を止めない
+  if (!projectId || !topicName) {
+    return {
+      renewed: false,
+      expiration: null,
+      reason: "GOOGLE_CLOUD_PROJECT_ID / PUBSUB_TOPIC_NAME 未設定のためスキップ",
+    };
+  }
+
+  const now = Date.now();
+  if (cachedWatchExpiration && cachedWatchExpiration - now > ONE_DAY_MS) {
+    return {
+      renewed: false,
+      expiration: cachedWatchExpiration,
+      reason: `残り ${Math.floor((cachedWatchExpiration - now) / 1000 / 60 / 60)}h あるためスキップ`,
+    };
+  }
+
+  const gmail = createGmailClient();
+
+  // ラベル ID を取得（Push 対象を multichannel-inbox ラベル付きメールに限定）
+  // 私用メールが Push で流入するのを防ぐため labelFilterBehavior="INCLUDE" を指定
+  const labelId = await resolveLabelId(gmail, TARGET_LABEL_NAME);
+  if (!labelId) {
+    throw new Error(
+      `Gmail ラベル '${TARGET_LABEL_NAME}' が見つかりません（Watch 登録前に Gmail 側で作成してください）`,
+    );
+  }
+
+  const res = await gmail.users.watch({
+    userId: "me",
+    requestBody: {
+      topicName: `projects/${projectId}/topics/${topicName}`,
+      labelIds: [labelId],
+      labelFilterBehavior: "INCLUDE",
+    },
+  });
+
+  // expiration は Unix ms 文字列で返る（例："1737777777000"）
+  const expirationRaw = res.data.expiration ?? null;
+  cachedWatchExpiration = expirationRaw ? Number(expirationRaw) : null;
+
+  return {
+    renewed: true,
+    expiration: cachedWatchExpiration,
+    reason: "users.watch 再登録完了",
+  };
+}
+
+/**
  * Gmail ポーリング本体
  * @returns 処理成功数と失敗数
  */
