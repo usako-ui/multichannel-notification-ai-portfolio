@@ -12,7 +12,7 @@
 | F-03 | Gmail 取り込み（Poller 方式） | Gmail API を OAuth2 でポーリングしラベル `multichannel-inbox` 付き未読を DB 保存（Cron 経由・Bearer 認証） | 高 | MVP | AC-002・AC-004 |
 | F-04 | Gemini API 分類 | 5 カテゴリへの自動分類 | 高 | MVP | AC-005・AC-006・AC-007 |
 | F-05 | Slack 自動振り分け | カテゴリ別 Slack チャネルへ自動投稿 | 高 | MVP | AC-008 |
-| F-06 | Vercel Cron | 1 分ごとのキュー消化処理 | 高 | MVP | AC-009 |
+| F-06 | GitHub Actions Cron | 5 分ごとのキュー消化処理（`main` push でも発火） | 高 | MVP | AC-009 |
 | F-07 | 緊急通知パス | クレーム検出時の即時 LINE Push | 高 | MVP | AC-010・AC-011 |
 | F-08 | 冪等性保証 | 同じメッセージの重複処理防止 | 高 | MVP | AC-003 |
 | F-09 | 監視 SQL | Supabase で未処理・失敗件数を確認 | 中 | MVP | AC-012 |
@@ -231,15 +231,19 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 
 ---
 
-### AC-009｜Vercel Cron 動作
+### AC-009｜GitHub Actions Cron 動作
 
-**機能：** 1 分ごとのキュー消化処理
+**機能：** 5 分ごとのキュー消化処理（Vercel Hobby プランの Cron 1 日 1 回制約を回避するため GitHub Actions 側で `schedule: */5 * * * *` を実行。加えて `main` への push でも発火し、GitHub Actions の schedule 遅延をカバーする）
 
 | # | 確認内容 | 期待結果 |
 |---|---|---|
-| 1 | `pending` レコードが 1 分以内に処理される | `status` が `notified` に更新される |
+| 1 | `pending` レコードが 5 分以内に処理される（GitHub Actions schedule 実行時） | `status` が `notified` に更新される |
 | 2 | 1 回の処理は最大 20 件に制限されている | 21 件以上ある場合は次の Cron で処理される |
 | 3 | **Slack 投稿が失敗した場合は `failed` になる** | `failed` ステータスで保存され、次の Cron で再処理されない |
+| 4 | **Gemini transient エラーは `pending` のまま保持される**（PR #8） | 次の Cron 周期で再試行され `deferred` としてカウントされる |
+
+> ⚠️ GitHub Actions の schedule はリポジトリ非アクティブ時に数時間〜数日遅延する既知の挙動がある（GitHub 公式ドキュメント記載）。`main` push トリガーを併設して PR マージ都度発火するように冗長化している（`.github/workflows/cron.yml`）。
+> **緊急通知（SLA 5 分以内）は Webhook 内で同期実行されるため Cron 遅延の影響を受けない。** Cron 遅延は Gmail 通常経路の Slack 投稿タイミングにのみ影響する。
 
 ---
 
@@ -324,7 +328,7 @@ GROUP BY status;
 | 冪等性 | 同じ `external_id` を 2 回処理しない | UNIQUE 制約による保証（R-07） |
 | セキュリティ | 全 Webhook で署名検証を実装 | 偽リクエスト対策（R-16） |
 | コスト | 月額 3,000〜3,300 円以内（実運用時） | 提案書記載 |
-| 可用性 | Vercel Hobby プラン（Cron は 2 件まで・今回 1 件使用） | Hobby プランの制約 |
+| 可用性 | Vercel Hobby プラン（Cron は 1 日 1 回まで・**GitHub Actions Cron に外部化して回避**） | Hobby プランの制約 |
 
 ---
 
@@ -358,7 +362,9 @@ GROUP BY status;
 
 | 決定事項 | 採用した方針 | 採用理由 |
 |---|---|---|
-| 緊急パスの設計 | Cron を経由しない。Webhook 受信と同じ関数内で即時処理 | Cron は 1 分ごと＋コールドスタートで SLA 5 分超えリスクがある（R-10） |
+| 緊急パスの設計 | Cron を経由しない。Webhook 受信と同じ関数内で即時処理 | GitHub Actions Cron は 5 分間隔かつ schedule 遅延の可能性があり、SLA 5 分厳守を保証できない（R-10）|
+| 定期実行の実装 | Vercel Cron から GitHub Actions Cron（5 分・push:main 併用）へ移行 | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ、無料枠内で 5 分間隔を実現するため（詳細は [`docs/change-log.md`](docs/change-log.md) 参照）|
+| Gmail 取り込み | Push Webhook（Pub/Sub）から Cron ベースのポーリングへ変更 | 追加インフラ（Pub/Sub トピック / OIDC サービスアカウント）を持たずに MVP を成立させるため（詳細は [`docs/change-log.md`](docs/change-log.md) 参照）|
 | 緊急キーワード | `クレームです\|苦情\|至急\|緊急対応\|怒り`（「緊急」単体は除外） | No.22 テストケース：「緊急ではありません」の誤検知を防ぐ |
 | クレームの境界線 | 迷った場合は「クレーム」に分類（安全側） | 見逃しのコストが誤検知のコストより大きい |
 | Cron 上限 | 1 回あたり最大 20 件 | Gemini API のレート制限・コスト超過防止（R-13） |

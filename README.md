@@ -161,8 +161,8 @@ gh workflow run cron.yml
 
 ```bash
 # 1. リポジトリをクローン
-git clone https://github.com/usako-ui/multichannel-notification-ai-dev.git
-cd multichannel-notification-ai-dev
+git clone https://github.com/usako-ui/multichannel-notification-ai-portfolio.git
+cd multichannel-notification-ai-portfolio
 
 # 2. 依存関係インストール
 npm install
