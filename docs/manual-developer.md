@@ -575,7 +575,7 @@ Cron 発火後（約 5 分以内・手動発火時は数十秒以内）に Slack
 
 **症状：** 5 分以上経っても pending レコードが notified にならない。
 
-**⚠️ 本プロジェクトは Vercel Cron ではなく GitHub Actions Cron（`.github/workflows/cron.yml`）を採用しています。** Vercel Dashboard の Cron Jobs タブは使用しません（詳細は `docs/change-log.md` 参照）。
+**⚠️ 本プロジェクトは Vercel Cron ではなく GitHub Actions Cron（`.github/workflows/cron.yml`）を採用しています。** Vercel Dashboard の Cron Jobs タブは使用しません。理由：Vercel Hobby プランの Cron は 1 日 1 回制約があるため、`schedule: "*/5 * * * *"` + `push: main` 併用で 5 分間隔を実現している。
 
 確認手順：
 

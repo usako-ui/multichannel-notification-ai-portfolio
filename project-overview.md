@@ -118,7 +118,7 @@ Vercel Functions（app/api/webhooks/）
 | Next.js 14 | Vercel との親和性・App Router で Webhook / Cron を同一プロジェクトで管理できる |
 | Supabase | DB・キュー管理をワンストップ提供。無料プランで MVP 検証が可能 |
 | Gemini API | 検証環境のコスト最小化（無料枠）。本番移行時に再評価する |
-| GitHub Actions Cron | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ 5 分間隔を無料枠で実現。`main` push トリガーを併設して schedule 遅延をカバー（詳細は [`docs/change-log.md`](docs/change-log.md)）|
+| GitHub Actions Cron | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ 5 分間隔を無料枠で実現。`main` push トリガーを併設して schedule 遅延をカバー |
 | Vercel Functions | Webhook 受信器として機能。常時起動サーバー不要でコストを削減 |
 
 > **Gemini API は今回の検証環境のみ。**

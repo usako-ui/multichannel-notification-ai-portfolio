@@ -363,8 +363,8 @@ GROUP BY status;
 | 決定事項 | 採用した方針 | 採用理由 |
 |---|---|---|
 | 緊急パスの設計 | Cron を経由しない。Webhook 受信と同じ関数内で即時処理 | GitHub Actions Cron は 5 分間隔かつ schedule 遅延の可能性があり、SLA 5 分厳守を保証できない（R-10）|
-| 定期実行の実装 | Vercel Cron から GitHub Actions Cron（5 分・push:main 併用）へ移行 | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ、無料枠内で 5 分間隔を実現するため（詳細は [`docs/change-log.md`](docs/change-log.md) 参照）|
-| Gmail 取り込み | Push Webhook（Pub/Sub）から Cron ベースのポーリングへ変更 | 追加インフラ（Pub/Sub トピック / OIDC サービスアカウント）を持たずに MVP を成立させるため（詳細は [`docs/change-log.md`](docs/change-log.md) 参照）|
+| 定期実行の実装 | Vercel Cron から GitHub Actions Cron（5 分・push:main 併用）へ移行 | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ、無料枠内で 5 分間隔を実現するため |
+| Gmail 取り込み | Push Webhook（Pub/Sub）から Cron ベースのポーリングへ変更 | 追加インフラ（Pub/Sub トピック / OIDC サービスアカウント）を持たずに MVP を成立させるため |
 | 緊急キーワード | `クレームです\|苦情\|至急\|緊急対応\|怒り`（「緊急」単体は除外） | No.22 テストケース：「緊急ではありません」の誤検知を防ぐ |
 | クレームの境界線 | 迷った場合は「クレーム」に分類（安全側） | 見逃しのコストが誤検知のコストより大きい |
 | Cron 上限 | 1 回あたり最大 20 件 | Gemini API のレート制限・コスト超過防止（R-13） |

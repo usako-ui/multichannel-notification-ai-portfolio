@@ -10,7 +10,7 @@ import { formatChannelLabel } from "@/lib/formatChannelLabel";
  * pending キュー消化用 Cron エンドポイント（T-13）
  *
  * 呼び出し元：GitHub Actions Cron（`.github/workflows/cron.yml`・5 分ごと + main push トリガー）。
- * Vercel Hobby プランの Cron 1 日 1 回制約を回避するため外部化した（詳細は docs/change-log.md）。
+ * Vercel Hobby プランの Cron 1 日 1 回制約を回避するため外部化した。
  * 呼び出し側は Authorization: Bearer $CRON_SECRET を必ず付与する。
  * 手動 / 外部から叩かれた場合（ヘッダなし・不一致）は 401 で拒否する。
  *
