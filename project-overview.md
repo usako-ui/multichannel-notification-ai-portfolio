@@ -97,7 +97,7 @@ Vercel Functions（app/api/webhooks/）
   │       ③ 営業部長 個人LINE へ Push（SLA 5分以内）
   └── 通常
         → Supabase inquiry_queue へ保存（status=pending）
-              ↓（Vercel Cron 1分ごと）
+              ↓（GitHub Actions Cron 5分ごと + main push トリガー）
         app/api/cron/classify/route.ts
               ↓（最大20件/回）
         classifyWithGemini()
@@ -118,7 +118,7 @@ Vercel Functions（app/api/webhooks/）
 | Next.js 14 | Vercel との親和性・App Router で Webhook / Cron を同一プロジェクトで管理できる |
 | Supabase | DB・キュー管理をワンストップ提供。無料プランで MVP 検証が可能 |
 | Gemini API | 検証環境のコスト最小化（無料枠）。本番移行時に再評価する |
-| Vercel Cron | サーバーレス構成で月額コストを抑えつつ 1 分ごとの定期実行が可能 |
+| GitHub Actions Cron | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ 5 分間隔を無料枠で実現。`main` push トリガーを併設して schedule 遅延をカバー |
 | Vercel Functions | Webhook 受信器として機能。常時起動サーバー不要でコストを削減 |
 
 > **Gemini API は今回の検証環境のみ。**
@@ -130,7 +130,7 @@ Vercel Functions（app/api/webhooks/）
 
 - 開発期間：要件定義確定後 約7営業日（テスト・修正バッファ込み）
 - 予算：初期 148,000 円 / 月額 約 3,000〜3,300 円（実運用時）
-- Vercel：Hobby プラン（Cron は 2 件まで。今回 1 件使用）
+- Vercel：Hobby プラン（Cron は 1 日 1 回まで。**GitHub Actions Cron に外部化して回避**）
 - Supabase：無料プラン（1 週間非活動でプロジェクトが一時停止する。週 1 回以上操作すること）
 - LINE 公式：無料プラン（Push Message は月 200 通まで。クレームは月 75 件想定で範囲内）
 - Gemini API は検証環境のみ。本番移行時に有料 API へ切り替えて再検証する

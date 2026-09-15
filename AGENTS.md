@@ -32,7 +32,7 @@ Gmail・LINE 公式に届いた問い合わせを Slack へ自動集約し、
 | 言語 | TypeScript（`any` 禁止） |
 
 **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
-**リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-dev
+**リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-portfolio
 
 ---
 
@@ -157,18 +157,26 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 **対策：** `lib/supabase.ts` の `supabaseAdmin` で `global.fetch` を差し替え、すべての Supabase リクエストに `cache: "no-store"` を強制する。
 
 ```typescript
-// lib/supabase.ts（正しい実装）
+// lib/supabase.ts（正しい実装・シングルトン + fetch キャッシュ回避）
+let cachedAdminClient: SupabaseClient | null = null;
+
 export function supabaseAdmin() {
-  return createClient(url, serviceRoleKey, {
+  if (cachedAdminClient) return cachedAdminClient;
+  cachedAdminClient = createClient(url, serviceRoleKey, {
+    // ⚠️ この global.fetch 差し替えを絶対に削除・簡略化しないこと（Cron 全体が壊れる）。
+    // シングルトンでキャッシュしても差し替えは createClient 時に固定されるため
+    // cache:"no-store" 挙動は維持される。
     global: {
       fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
     },
   });
+  return cachedAdminClient;
 }
 ```
 
 > ⚠️ **絶対に触ってはいけないコード：** 上記の `global.fetch` 差し替え部分。削除・簡略化すると Cron 全体が壊れる。
 > **PR #7 で導入・本番リリース時の障害で長時間デバッグの末に判明した根本原因。**
+> シングルトン化（PR #3・portfolio 側）は 1 Function インスタンス内で `createClient` を毎回実行するコストを削減する目的で追加されたが、`global.fetch` 差し替え契約は温存されている。
 
 ---
 

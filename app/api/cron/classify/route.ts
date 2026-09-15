@@ -9,11 +9,16 @@ import { formatChannelLabel } from "@/lib/formatChannelLabel";
 /**
  * pending キュー消化用 Cron エンドポイント（T-13）
  *
- * Vercel Cron は Authorization: Bearer $CRON_SECRET を自動付与する。
- * 手動 / 外部から叩かれた場合は 401 で拒否する。
+ * 呼び出し元：GitHub Actions Cron（`.github/workflows/cron.yml`・5 分ごと + main push トリガー）。
+ * Vercel Hobby プランの Cron 1 日 1 回制約を回避するため外部化した。
+ * 呼び出し側は Authorization: Bearer $CRON_SECRET を必ず付与する。
+ * 手動 / 外部から叩かれた場合（ヘッダなし・不一致）は 401 で拒否する。
  *
- * Vercel Hobby プランは Cron が「1件かつ1日1回以上不可」の制約があるため、
- * Gmail ポーリング（旧 /api/cron/gmail）をこのエンドポイントに統合している。
+ * 単一エンドポイントに集約している理由：
+ *   Vercel Hobby プランは Cron 1 件のみだったため Gmail ポーリング（旧 /api/cron/gmail）と
+ *   pending 消化を統合した。GitHub Actions 移行後もこの構造を維持している
+ *   （Gmail 取り込みと Slack 投稿は同じ pending キューを共有するため直列化した方が
+ *   Gemini レート制限を跨いだ挙動が予測しやすい）。
  *
  * 処理の流れ：
  *   0. pollGmailInbox() で Gmail の未読メールを取得 → inquiry_queue に INSERT
@@ -56,7 +61,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  // Bearer 認証（Vercel Cron が自動付与する Authorization ヘッダを検証）
+  // Bearer 認証（GitHub Actions Cron ワークフローが付与する Authorization ヘッダを検証）
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

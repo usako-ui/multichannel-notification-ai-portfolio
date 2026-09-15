@@ -5,7 +5,7 @@
 > **対象読者：** このシステムを引き継いだ開発者・運用担当者
 > **最終更新：** 2026-09-14（本番リリース時点の実装を反映）
 > **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
-> **リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-dev
+> **リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-portfolio
 >
 > **本番リリース時に判明した実運用ポイントは「8. トラブルシューティング」に集約しています。**
 > **AI エージェント向けの「触ると壊れる箇所」は `AGENTS.md` を参照してください（本ドキュメント section 10 から誘導）。**
@@ -32,8 +32,8 @@
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/usako-ui/multichannel-notification-ai-dev.git
-cd multichannel-notification-ai-dev
+git clone https://github.com/usako-ui/multichannel-notification-ai-portfolio.git
+cd multichannel-notification-ai-portfolio
 
 # 依存関係をインストール
 npm install
@@ -72,7 +72,7 @@ npm run dev
 ```
 ① Vercel ダッシュボードで「Add New...」→「Project」を選択
 ② 「Import Git Repository」で GitHub を選択
-③ リポジトリ一覧から「multichannel-notification-ai-dev」を選択
+③ リポジトリ一覧から「multichannel-notification-ai-portfolio」を選択
 ④ 「Import」をクリック
 ```
 
@@ -271,12 +271,13 @@ curl -X POST https://oauth2.googleapis.com/token \
 
 
 
-#### Vercel Cron 保護（1件）
+#### Cron 保護（1件）
 
+> Cron 本体は GitHub Actions（`.github/workflows/cron.yml`）から `Authorization: Bearer $CRON_SECRET` で呼び出す。Vercel 側と GitHub Secrets の両方に同じ値を投入する必要がある。
 
-| キー名           | 用途                                 | 取得先          | 公開区分          | Vercel スコープ   |
-| ------------- | ---------------------------------- | ------------ | ------------- | ------------- |
-| `CRON_SECRET` | Cron エンドポイントへの不正アクセス防止 Bearer トークン | ターミナルで生成（後述） | **機密・サーバー専用** | Production のみ |
+| キー名           | 用途                                 | 取得先          | 公開区分          | 投入先                         |
+| ------------- | ---------------------------------- | ------------ | ------------- | ---------------------------- |
+| `CRON_SECRET` | Cron エンドポイントへの不正アクセス防止 Bearer トークン | ターミナルで生成（後述） | **機密・サーバー専用** | Vercel Production + GitHub Actions Secrets |
 
 
 **CRON_SECRET の生成方法：**
@@ -541,7 +542,7 @@ gh run view <RUN_ID> --log 2>&1 | grep -E "notified|failed|deferred"
 ### 確認 4｜Slack への投稿確認
 
 ```
-Cron 発火後（約 1 分以内）に Slack の各チャネルを確認する
+Cron 発火後（約 5 分以内・手動発火時は数十秒以内）に Slack の各チャネルを確認する
 → テストメッセージが分類されて投稿されていれば成功
 
 投稿されない場合は「8. トラブルシューティング → Slack 投稿されない」を参照。
@@ -572,22 +573,39 @@ Cron 発火後（約 1 分以内）に Slack の各チャネルを確認する
 
 ### Cron が動かない
 
-**症状：** 1 分経っても pending レコードが notified にならない。
+**症状：** 5 分以上経っても pending レコードが notified にならない。
+
+**⚠️ 本プロジェクトは Vercel Cron ではなく GitHub Actions Cron（`.github/workflows/cron.yml`）を採用しています。** Vercel Dashboard の Cron Jobs タブは使用しません。理由：Vercel Hobby プランの Cron は 1 日 1 回制約があるため、`schedule: "*/5 * * * *"` + `push: main` 併用で 5 分間隔を実現している。
 
 確認手順：
 
-```
-1. Vercel ダッシュボード → 「Settings」→「Cron Jobs」タブを開く
-   → Cron が登録されているか確認する（2件：classify と gmail）
-   → Vercel Hobby プランは Cron 2件まで。2件以内であることを確認する
+```bash
+# 1. 直近の GitHub Actions ワークフロー実行結果を確認する
+gh run list --workflow=cron.yml --limit=5
 
-2. 「Run」ボタンで手動発火し、Logs タブでエラーを確認する
+# 2. 失敗している run の詳細ログを見る
+gh run view <RUN_ID> --log 2>&1 | tail -50
 
-3. よくある原因：
-   - CRON_SECRET が未設定 → 401 エラーが出る
-   - SUPABASE_SERVICE_ROLE_KEY が未設定 → DB 接続エラーが出る
-   - GEMINI_API_KEY が未設定 → 分類エラーが出る
+# 3. 手動発火して原因を切り分ける
+gh workflow run cron.yml
+gh run watch  # 実行完了まで待機
+
+# 4. エンドポイント単体で疎通確認（401 が返れば認証は生きている）
+curl -s -o /dev/null -w "%{http_code}\n" https://YOUR-PROJECT.vercel.app/api/cron/classify
+# → 401 期待（Bearer 認証なしのため）
 ```
+
+**よくある原因：**
+
+- **GitHub Secrets 未設定**：`PRODUCTION_URL` または `CRON_SECRET` が未設定
+  → GitHub リポジトリ Settings → Secrets and variables → Actions で確認
+- **CRON_SECRET の Vercel 側との不一致**：Vercel 環境変数と GitHub Secrets の値が食い違うと 401
+  → 両側で同じ値に揃える（Vercel 側を変えた場合は GitHub Secrets の更新も必要）
+- **SUPABASE_SERVICE_ROLE_KEY 未設定**：Vercel 側で DB 接続エラー
+- **GEMINI_API_KEY 未設定**：Vercel 側で分類エラー（レスポンスの `deferred` が増加）
+- **GitHub Actions schedule 遅延**：リポジトリ非アクティブ時に数時間〜数日発火しないことがある
+  → 通常は `main` push でも発火するため PR マージが実質的なトリガーになる（cron.yml 内 push トリガー）
+  → 急ぐ場合は `gh workflow run cron.yml` で手動発火
 
 
 
