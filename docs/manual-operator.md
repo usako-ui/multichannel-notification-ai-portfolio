@@ -204,28 +204,28 @@ Slackへの投稿が3回連続で失敗しました。
 
 ## 補足：システムの動作イメージ
 
-```
-お客様 ──[LINE メッセージ]──▶ LINE 公式アカウント ──┐
-                                                    │
-お客様 ──[メール]───────────▶ Gmail ────────────────┤
-                                                    ▼
-                                       ┌──────────────────┐
-                                       │ AI 自動分類       │
-                                       │ （5 カテゴリ）     │
-                                       └────────┬─────────┘
-                                                ▼
-                            ┌───────────────────┴───────────────────┐
-                            ▼                                       ▼
-                   通常の問い合わせ                          クレーム検出
-                            │                                       │
-                            ▼                                       ▼
-                    Slack のいずれか                    Slack #クレーム緊急
-                    #賃貸 / #売買 /                             +
-                    #内見 / #要確認                     営業部長 個人 LINE Push
+```mermaid
+flowchart LR
+    Customer((お客様))
+    LINE[LINE 公式]
+    Gmail[Gmail]
+    AI[AI 自動分類<br/>5 カテゴリ]
+    Normal[通常の問い合わせ<br/>Slack #賃貸 #売買<br/>#内見 #要確認]
+    Urgent[クレーム検出<br/>Slack #クレーム緊急<br/>+ 営業部長 個人 LINE]
+
+    Customer --> LINE
+    Customer --> Gmail
+    LINE --> AI
+    Gmail --> AI
+    AI -->|数分以内| Normal
+    AI -->|5 分以内| Urgent
+
+    classDef urgentNode fill:#fee5e5,stroke:#e53e3e,color:#000
+    class Urgent urgentNode
 ```
 
-- **通常の問い合わせ：** LINE/Gmail 受信 → 数分以内に Slack 投稿
-- **クレーム：** LINE/Gmail 受信 → **5 分以内**に Slack + LINE Push 同時通知
+- **通常の問い合わせ：** LINE / Gmail 受信 → 数分以内に Slack 投稿
+- **クレーム（赤）：** LINE / Gmail 受信 → **5 分以内**に Slack + LINE Push 同時通知
 
 ---
 

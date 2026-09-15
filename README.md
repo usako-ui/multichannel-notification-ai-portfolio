@@ -26,65 +26,43 @@
 
 ## システムアーキテクチャ
 
-```
-[顧客]
-   │
-   ├── LINE 公式アカウント ─────────┐
-   │                                │
-   └── Gmail                        │
-       (multichannel-inbox ラベル) ─┤
-                                    ▼
-                    ┌───────────────────────────┐
-                    │  Vercel Functions         │
-                    │  (Next.js 14 App Router)  │
-                    │                           │
-                    │  1. LINE Webhook 受信     │
-                    │     (HMAC-SHA256 検証)    │
-                    │  2. Gmail Poller          │
-                    │     (OAuth2・5 分毎)      │
-                    │  3. 緊急キーワード判定    │
-                    └───────┬───────────────────┘
-                            │
-              ┌─────────────┴─────────────┐
-              ▼                           ▼
-      緊急パス（クレーム系）         通常パス
-      (handleUrgent)              (Cron 経由)
-              │                           │
-              │  ┌────────────────────┐   │  ┌────────────────────┐
-              │  │ Supabase           │   │  │ Supabase           │
-              │  │ inquiry_queue      │   │  │ inquiry_queue      │
-              │  │ is_urgent=TRUE     │   │  │ status=pending     │
-              │  └────────────────────┘   │  └──────────┬─────────┘
-              │                           │             │
-              │                           │             ▼
-              │                           │  ┌────────────────────┐
-              │                           │  │ GitHub Actions Cron│
-              │                           │  │ (5 分間隔 + push)  │
-              │                           │  └──────────┬─────────┘
-              │                           │             │
-              │                           │             ▼
-              │                           │  ┌────────────────────┐
-              │                           │  │ Gemini API         │
-              │                           │  │ 5 カテゴリ分類     │
-              │                           │  └──────────┬─────────┘
-              │                           │             │
-              ▼                           ▼             ▼
-      ┌────────────────────┐      ┌───────────────────────────┐
-      │ Slack              │      │ Slack カテゴリ別チャネル  │
-      │ #クレーム緊急      │      │ #賃貸 #売買 #内見 #要確認 │
-      │ (即時投稿)         │      │                           │
-      └────────────────────┘      └───────────────────────────┘
-              │
-              ▼
-      ┌────────────────────┐
-      │ 営業部長 LINE Push │
-      │ (SLA 5 分以内)     │
-      └────────────────────┘
+```mermaid
+flowchart LR
+    Customer((お客様))
+    LINE[LINE 公式]
+    Gmail[Gmail<br/>+ラベル]
+    Webhook[Vercel<br/>Webhook / Poller]
+    Detect{緊急キーワード<br/>判定}
+    Fast[緊急パス<br/>同期実行]
+    DB[(Supabase<br/>pending)]
+    Cron[GitHub Actions<br/>Cron]
+    AI[Gemini API<br/>5 カテゴリ分類]
+    LinePush[営業部長<br/>個人 LINE Push]
+    UrgentSlack[Slack<br/>#クレーム緊急]
+    NormalSlack[Slack<br/>#賃貸 #売買<br/>#内見 #要確認]
+
+    Customer --> LINE
+    Customer --> Gmail
+    LINE --> Webhook
+    Gmail --> Webhook
+    Webhook --> Detect
+    Detect -->|クレーム系| Fast
+    Detect -->|通常| DB
+    DB --> Cron
+    Cron --> AI
+    Fast --> LinePush
+    Fast --> UrgentSlack
+    AI --> NormalSlack
+
+    classDef urgentNode fill:#fee5e5,stroke:#e53e3e,color:#000
+    classDef normalNode fill:#e6f4ea,stroke:#38a169,color:#000
+    class Fast,LinePush,UrgentSlack urgentNode
+    class AI,NormalSlack normalNode
 ```
 
 **設計思想：**
-- **緊急パスは Cron を経由しない**（Cron 遅延で SLA 5 分を超えるリスクを排除）
-- **通常パスは Cron 経由**（Gemini API のレート制限をキュー吸収）
+- **緊急パスは Cron を経由しない**（赤経路・Cron 遅延で SLA 5 分を超えるリスクを排除）
+- **通常パスは Cron 経由**（緑経路・Gemini API のレート制限をキュー吸収）
 - **Supabase RLS + service_role キー分離**でセキュリティ多層化
 
 ---

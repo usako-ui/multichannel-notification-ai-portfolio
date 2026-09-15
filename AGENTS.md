@@ -84,27 +84,35 @@ Gmail・LINE 公式に届いた問い合わせを Slack へ自動集約し、
 
 ## システムのデータフロー
 
+```mermaid
+flowchart LR
+    Src["Gmail / LINE 公式"]
+    VF["Vercel Functions<br/>webhooks/line, gmailPoller"]
+    Judge{"緊急判定<br/>urgentDetection.ts"}
+    HU["handleUrgent()<br/>Cron 非経由 / SLA 5 分"]
+    DB[("Supabase<br/>inquiry_queue")]
+    Cron["Cron classify<br/>*/5 min + push:main"]
+    Gemini["Gemini API<br/>gemini-flash-latest"]
+    Notif["Slack + LINE Push<br/>送信元 / 送信者名付き"]
+
+    Src --> VF
+    VF --> Judge
+    Judge -->|クレーム系| HU
+    Judge -->|通常| DB
+    DB -->|status=pending| Cron
+    Cron --> Gemini
+    Gemini -->|status=notified| DB
+    HU -->|is_urgent=TRUE| DB
+    HU --> Notif
+    Gemini --> Notif
+
+    classDef urgent fill:#fee5e5,stroke:#e53e3e,color:#000
+    class HU urgent
 ```
-Gmail / LINE 公式
-  ↓（Webhook / Poller）
-Vercel Functions（app/api/webhooks/line/, lib/gmailPoller.ts）
-  ↓（緊急キーワード判定：urgentDetection.ts）
-  ├── 緊急（クレーム系）
-  │     → handleUrgent()          [Cron 非経由・SLA 5 分以内]
-  │     → Supabase 保存（is_urgent=TRUE・sender_id・sender_name 含む）
-  │     → Slack #クレーム緊急 投稿
-  │     → 営業部長 LINE Push（displayName 付き）
-  └── 通常
-        → Supabase inquiry_queue（status=pending）
-              ↓（GitHub Actions Cron：*/5 * * * * + push:main）
-        app/api/cron/classify/route.ts
-              ↓
-        Gemini API（gemini-flash-latest・5 カテゴリ分類）
-              ↓
-        Slack 各カテゴリチャネルへ投稿（送信元 + 送信者名付き）
-              ↓
-        inquiry_queue.status → notified
-```
+
+- **緊急パス（赤）：** handleUrgent は Cron を経由せず Webhook 内で同期実行。SLA 5 分厳守。
+- **通常パス：** Supabase pending → Cron → Gemini 分類 → Slack 投稿 → status=notified。
+- **共通末端：** Slack + LINE Push は `送信元：LINE/Gmail｜送信者：XXX さん` フォーマット。
 
 ---
 
