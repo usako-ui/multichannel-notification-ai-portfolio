@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-brand-ink text-brand-text antialiased;
+  }
+  ::selection {
+    @apply bg-brand-primary/30 text-white;
+  }
+}

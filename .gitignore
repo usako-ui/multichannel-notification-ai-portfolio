@@ -1,0 +1,42 @@
+# 環境変数（APIキー・シークレット）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Claude Code 内部指示ファイル（公開リポジトリに含めない）
+CLAUDE.md
+tasks.md
+
+# Next.js
+.next/
+out/
+build/
+
+# 依存関係
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+
+# Claude Code 内部設定（ユーザー個人環境依存）
+.claude/
+
+# ログ
+*.log
+npm-debug.log*
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+agent-brief.md
