@@ -47,11 +47,22 @@ export function supabaseBrowser(): SupabaseClient {
  *    クライアント側モジュールから import すると、
  *    SERVICE_ROLE_KEY がバンドルされてブラウザに漏洩する。
  *    利用箇所は app/api/ 配下と lib/ のサーバーモジュールに限定する。
+ *
+ * シングルトン設計：
+ *   Webhook・Cron ハンドラは 1 リクエストで supabaseAdmin() を複数回呼ぶ場合がある
+ *   （handleUrgent → 冪等 INSERT → 送信者名保存 など）。呼び出し毎に createClient
+ *   すると内部 fetch 用のクライアント状態を作り直すコストが積み上がるため、
+ *   モジュールスコープでキャッシュして 1 Function インスタンス内で再利用する。
+ *   ⚠️ global.fetch 差し替えは createClient 時にのみ適用されるため、
+ *      キャッシュしても cache:"no-store" 挙動は維持される（AGENTS.md 触ると壊れる箇所 #1）。
  */
+let cachedAdminClient: SupabaseClient | null = null;
+
 export function supabaseAdmin(): SupabaseClient {
+  if (cachedAdminClient) return cachedAdminClient;
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
-  return createClient(url, serviceRoleKey, {
+  cachedAdminClient = createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -59,8 +70,10 @@ export function supabaseAdmin(): SupabaseClient {
     // Next.js App Router のデフォルト fetch キャッシュを回避する。
     // これがないと Route Handler 内の SELECT が初回結果をキャッシュし、
     // DB を更新しても Cron が「pending 0 件」を返し続ける事故が起きる。
+    // ⚠️ この差し替えは createClient 時に固定されるため、シングルトン化しても効果は維持される。
     global: {
       fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
     },
   });
+  return cachedAdminClient;
 }

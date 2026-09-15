@@ -19,6 +19,12 @@ const MAX_RETRIES = 3;
 // 2000ms に設定し、合計 6秒（2秒 + 4秒）まで待機する。
 const BASE_DELAY_MS = 2000;
 
+// Slack API が 429 で返す Retry-After の上限（ms）。
+// Slack のレート制限は通常 1〜60 秒だが、稀に大きな値を指定してくる可能性があり、
+// Cron の maxDuration(60秒) を超えると 1 件で全キュー処理が破綻するため
+// 30 秒でクランプする（クランプ後もなお失敗するなら次 Cron に委ねる）。
+const RETRY_AFTER_MAX_MS = 30_000;
+
 // Slack chat.postMessage の text は長すぎると 400 系エラーで拒否される。
 // Gmail の長文メール（数万文字の HTML デコード後本文）を丸ごと送ると
 // 毎回 failed → LINE アラート誤送信になるため送信前にトリムする（QA #2 対応）。
@@ -43,6 +49,28 @@ type SlackPostMessageResponse = {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Slack 429 レスポンスの `Retry-After` ヘッダを ms に変換する。
+ * Slack API は秒数（整数）で返す仕様だが、汎用性のため HTTP-date 形式も許容する。
+ * 不正値・過大値は `RETRY_AFTER_MAX_MS` でクランプする（Cron 占有防止）。
+ *
+ * @returns 待機すべき ms。ヘッダが無い / パース不能なら null（呼び出し側が指数バックオフを使う）
+ */
+function parseRetryAfterMs(headerValue: string | null): number | null {
+  if (!headerValue) return null;
+  const asSeconds = Number(headerValue);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.min(asSeconds * 1000, RETRY_AFTER_MAX_MS);
+  }
+  // HTTP-date（"Wed, 21 Oct 2015 07:28:00 GMT"）フォールバック
+  const dateMs = Date.parse(headerValue);
+  if (Number.isFinite(dateMs)) {
+    const delta = dateMs - Date.now();
+    if (delta > 0) return Math.min(delta, RETRY_AFTER_MAX_MS);
+  }
+  return null;
 }
 
 /**
@@ -166,8 +194,11 @@ export async function postToSlack(params: {
 
   const safeText = truncateForSlack(params.text);
   let lastError = "unknown error";
+  // 429 応答時のみ Slack が指定した待機秒数を使う。それ以外は指数バックオフ。
+  let retryAfterMs: number | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    retryAfterMs = null;
     try {
       const res = await fetch("https://slack.com/api/chat.postMessage", {
         method: "POST",
@@ -181,20 +212,28 @@ export async function postToSlack(params: {
         }),
       });
 
-      const data = (await res.json()) as SlackPostMessageResponse;
-
-      if (res.ok && data.ok) {
-        return;
+      // 429 は body を読む前にヘッダで待機指示を確定させる（body が JSON でない可能性あり）
+      if (res.status === 429) {
+        retryAfterMs = parseRetryAfterMs(res.headers.get("retry-after"));
+        lastError = `rate_limited (Retry-After=${retryAfterMs ?? "n/a"}ms)`;
+      } else {
+        const data = (await res.json()) as SlackPostMessageResponse;
+        if (res.ok && data.ok) {
+          return;
+        }
+        lastError = data.error ?? `HTTP ${res.status}`;
       }
-
-      lastError = data.error ?? `HTTP ${res.status}`;
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
 
     if (attempt < MAX_RETRIES) {
-      // 指数バックオフ: 1回目失敗後2秒 → 2回目失敗後4秒（合計 6秒）
-      await sleep(BASE_DELAY_MS * 2 ** (attempt - 1));
+      // 429 で Retry-After が指定されていれば Slack の指示を尊重する
+      // （指数バックオフより長い場合は Slack 側が過負荷なので必ず従う）。
+      // それ以外は指数バックオフ: 1回目失敗後2秒 → 2回目失敗後4秒（合計 6秒）
+      const backoffMs = BASE_DELAY_MS * 2 ** (attempt - 1);
+      const waitMs = retryAfterMs !== null ? Math.max(retryAfterMs, backoffMs) : backoffMs;
+      await sleep(waitMs);
     }
   }
 
