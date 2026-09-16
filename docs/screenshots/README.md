@@ -2,11 +2,13 @@
 
 **このフォルダの用途：** 各種マニュアルに埋め込む図表・スクリーンショットを集約。
 
+**基本方針：** Claude Code で自動生成できる SVG で 90% カバー・実機撮影は最小限（3 枚）に抑える。
+
 ---
 
-## ファイル種別
+## ✅ Claude Code 自動生成済み SVG（7 ファイル）
 
-### ✅ Claude Code 自動生成の SVG（7 ファイル・PR #11 で追加）
+すべて手書き SVG（Inter フォント指定）。GitHub / VS Code / ブラウザで直接レンダリング可能・PNG 変換不要。
 
 | ファイル | 埋め込み先 | 内容 |
 |---|---|---|
@@ -18,62 +20,85 @@
 | `troubleshoot-flowchart.svg` | `../manual-developer-quickref.md`（判断フロー節）| 症状 → 一次確認 → 一次対応の分岐図 |
 | `env-vars-map.svg` | `../manual-developer-quickref.md`（環境変数マトリクス節）| 全 20 変数を 7 グループに配置 |
 
-すべて手書き SVG（Inter フォント指定）。GitHub / VS Code / ブラウザで直接レンダリング可能・PNG 変換不要。
-
 ---
 
-### 🔴 ユーザー実機撮影が必要な PNG（T-29 で追加予定）
+## 🔴 実機撮影が必要な PNG（必須 3 枚のみ）
 
-**命名規則：** `NN-対象-シーン.png`（連番 + kebab-case・ファイル名から内容が判別できる形式）
+**なぜ 3 枚だけか：** ポートフォリオとしての視覚的訴求と、SLA 達成の裏付けに必要な最小限。設定画面や dashboard 系は SVG モック + 文字説明で代替可能なので撮影対象から外した。
+
+### 撮影対象（合計 3 枚・作業時間 目安 10 分）
+
+| # | ファイル名 | 撮影対象 | 埋め込み先 | 撮影のコツ |
+|---|---|---|---|---|
+| 01 | `01-lp-hero.png` | 本番 LP の Hero セクション（PC）| `../../README.md`（トップ画像）| Chrome PC で https://multichannel-notification-ai-dev.vercel.app/ を開き、Hero セクション（1st view）をキャプチャ |
+| 02 | `02-lp-hero-mobile.png` | 本番 LP の Hero セクション（スマホ）| `../../README.md`（レスポンシブ実証）| ①の後に Chrome DevTools でモバイル表示（iPhone 14 Pro 等）に切り替え → 同じ Hero をキャプチャ・**PC 撮影と同じセッションで完結** |
+| 03 | `03-line-push-real.png` **OR** `03-slack-real-channels.png` | クレーム LINE Push 実受信 **OR** Slack `#クレーム緊急` 実投稿 | `../manual-operator.md`（緊急通知節・裏付け）| どちらか撮りやすい方 1 枚だけで OK。LINE Push はスマホの通知センター画面が伝わりやすい |
 
 **マスキング必須項目：** 個人名・メールアドレス・User ID・API キー・チャネル ID・実 URL 等（Misa さんが編集）
 
-#### 高優先度（納品時に必須）
+---
 
-| # | ファイル名（案）| 撮影対象 | 埋め込み先 |
-|---|---|---|---|
-| 01 | `01-lp-hero.png` | 本番 LP のヒーローセクション（PC）| `../../README.md`（トップ画像）|
-| 02 | `02-lp-hero-mobile.png` | 本番 LP のヒーローセクション（スマホ）| `../../README.md`（レスポンシブ実証）|
-| 03 | `03-slack-real-channels.png` | 実 Slack ワークスペースの 5 チャネル + 実投稿 | `../manual-operator.md`（普段の確認節・裏付け）|
-| 04 | `04-line-push-real.png` | 実スマホで受信した緊急通知 | `../manual-operator.md`（緊急通知節・裏付け）|
-| 05 | `05-vercel-dashboard.png` | Vercel Dashboard の Deployment 一覧 | `../manual-developer.md` §2 |
-| 06 | `06-vercel-env-vars.png` | Vercel の Environment Variables 画面 | `../manual-developer.md` §3 |
-| 07 | `07-github-actions-run.png` | GitHub Actions の cron.yml 実行結果 | `../manual-developer.md` §7 確認 3 |
-| 08 | `08-supabase-sql-editor.png` | Supabase SQL Editor で監視 SQL を実行した結果 | `../manual-developer.md` §7 監視 SQL |
-| 09 | `09-supabase-table-editor.png` | inquiry_queue テーブルの実データ | `../manual-developer.md` §3.5 |
+## 撮影手順（10 分で完了）
 
-#### 中優先度（あれば説得力向上）
+### 手順 1｜LP PC 版（3 分）
+1. Chrome で https://multichannel-notification-ai-dev.vercel.app/ を開く
+2. Hero セクション（画面上部のキャッチコピー + CTA ボタンが見える範囲）が画面いっぱいに表示された状態にする
+3. `Win + Shift + S`（Windows）または `Cmd + Shift + 4`（Mac）で範囲キャプチャ
+4. `docs/screenshots/01-lp-hero.png` として保存
 
-| # | ファイル名（案）| 撮影対象 | 埋め込み先 |
-|---|---|---|---|
-| 10 | `10-line-developers-webhook.png` | LINE Developers の Webhook URL 設定画面 | `../manual-developer.md` §4 |
-| 11 | `11-gmail-label-rule.png` | Gmail の振り分けルール（multichannel-inbox）| `../manual-developer.md` §6 |
-| 12 | `12-gcp-pubsub-subscription.png` | GCP Console の Pub/Sub subscription 設定 | `../../AGENTS.md` §8 |
-| 13 | `13-slack-app-oauth.png` | Slack App の OAuth & Permissions 画面 | `../manual-developer.md` §9 |
-| 14 | `14-vercel-function-logs.png` | Vercel の Function Logs（gmail-push 200 応答）| `../manual-developer.md` §8 |
+### 手順 2｜LP モバイル版（3 分）
+1. 同じ Chrome タブで `F12` → DevTools を開く
+2. デバイスツールバー（Ctrl + Shift + M）→ iPhone 14 Pro を選択
+3. Hero セクションが画面いっぱいの状態でキャプチャ
+4. `docs/screenshots/02-lp-hero-mobile.png` として保存
+
+### 手順 3｜動作裏付け 1 枚（4 分）
+
+**選択肢 A: LINE Push 実受信（スマホ操作）**
+1. スマホで公式 LINE にテストクレーム「エアコンが効きません、至急対応してください、苦情です」を送信
+2. 60 秒以内に営業部長の個人 LINE に届く通知センターを表示
+3. スマホでスクリーンショット → PC に送信
+4. `docs/screenshots/03-line-push-real.png` として保存
+
+**選択肢 B: Slack 実投稿（PC 完結）**
+1. LINE や Gmail からテストクレームを送信
+2. Slack `#クレーム緊急` チャネルを開いて 🚨 マーク付き投稿が表示された状態にする
+3. Chrome または Slack アプリで範囲キャプチャ
+4. `docs/screenshots/03-slack-real-channels.png` として保存
 
 ---
 
-## 撮影のヒント
+## 撮影後の埋め込み
 
-**Vercel Dashboard：** ダークテーマの方が印象が良い（Settings → Appearance → Dark）
-**Slack：** 実ワークスペースが用意できない場合は開発用ワークスペースで代替可
-**LINE Push 実受信：** スマホの通知センター（ロック画面）で撮影 → プライバシー配慮
-**GitHub Actions run：** 成功したワークフローの詳細画面（steps 展開・response body 見える形）
+3 枚保存したら、以下のコマンドで埋め込み確認：
 
-**マスキングツール：**
-- Windows：Snipping Tool の「編集で開く」→ 塗りつぶし・ぼかし
-- Mac：プレビュー → ツールバーで注釈
-- 汎用：GIMP・Photopea（ブラウザ版）
+```bash
+# ファイルが揃っているか確認
+ls docs/screenshots/*.png
+# → 01-lp-hero.png / 02-lp-hero-mobile.png / 03-line-push-real.png (or 03-slack-real-channels.png)
+```
+
+その後、以下のドキュメントに `![]()` で埋め込む（未実施の場合は Claude Code に「01/02/03 のスクショを追加したので README と manual-operator に埋め込んで」と依頼）：
+
+- `README.md` 冒頭に `![](docs/screenshots/01-lp-hero.png)` を追加
+- `README.md` の適切な位置に `![](docs/screenshots/02-lp-hero-mobile.png)` を追加
+- `docs/manual-operator.md` の緊急通知節（既に `line-push-mockup.svg` を配置済み）に実写を追加
 
 ---
 
-## 追加時の手順
+## 「本当は撮った方がいいけど、なくても成立する」もの（オプション）
 
-1. 撮影して `docs/screenshots/NN-xxx.png` として保存
-2. 埋め込み先ドキュメントの該当セクションに `![](screenshots/NN-xxx.png)` を追加
-3. 本 README の対応表の該当行を「✅ 撮影済み」に更新
-4. `git add . && git commit -m "docs: <対象> のスクショを追加"`
+以下は撮る余裕があれば良いですが、なくても納品品質は保てます。時間に余裕ができたときに追加してください。
+
+- Vercel Dashboard（Deployment / Env Vars / Function Logs）
+- GitHub Actions のワークフロー実行結果
+- Supabase の SQL Editor 実行結果 / inquiry_queue テーブル実データ
+- LINE Developers Webhook URL 設定画面
+- Gmail の振り分けルール設定画面
+- GCP Console の Pub/Sub subscription 設定画面
+- Slack App の OAuth & Permissions 画面
+
+これらは全て `manual-developer.md` の該当セクションで文字と SVG により説明済みなので、撮影しなくても引き継ぎ担当者は迷いません。
 
 ---
 
