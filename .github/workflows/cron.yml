@@ -4,38 +4,54 @@ name: External Cron (Gmail poll + queue drain)
 # 目的：Vercel Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避し、
 #       GitHub Actions から /api/cron/classify を定期実行するための外部 Cron。
 #
-# 実行内容：Gmail 未読取り込み → pending キュー消化（Gemini 分類 + Slack 投稿）
+# 実行内容：
+#   1. Gmail 未読取り込み（pollGmailInbox・緊急時 handleUrgent 同期実行）
+#   2. pending キュー消化（Gemini 分類 + Slack 投稿）
+#   3. Gmail Watch 期限チェック（残り 24h 以下で users.watch 再登録）
 #
 # ---------------------------------------------------------------------
-# トリガー戦略（3 段構え・信頼性順）
+# トリガー戦略（2 段構え）
 # ---------------------------------------------------------------------
 #
 # 1. workflow_dispatch（推奨・最も確実）
-#    - GitHub Actions UI から手動発火
-#    - ポートフォリオ用途では動作確認・実機テストの正式手段として使う
-#    - コマンド：gh workflow run cron.yml
+#    - GitHub Actions UI or `gh workflow run cron.yml` で明示発火
+#    - 実機テスト・schedule 遅延時の即時消化はこちらを使う
 #
-# 2. push: main（PR マージ時に自動発火・確実）
-#    - main への push で必ず 1 回発火
-#    - 開発中の PR マージがそのまま Cron 発火として機能
+# 2. schedule（ベストエフォート）
+#    - `*/5 * * * *` と書いても低頻度リポジトリでは数時間 skip される既知挙動
+#    - 通常の queue drain / Watch 更新には十分（下記 SLA 影響を参照）
+#    - 遅延が気になるときは workflow_dispatch で補完する
 #
-# 3. schedule（ベストエフォート・保証なし）
-#    - "*/5 * * * *" と書いても GitHub 側の負荷やリポジトリ活動状況で
-#      **数時間〜数日遅延・スキップされる**（GitHub 公式が明記している既知挙動）
-#    - 特にポートフォリオリポジトリのように commit 頻度が低いと
-#      「非アクティブ扱い」で発火されにくい
-#    - schedule のみに依存せず、必要な時は workflow_dispatch で明示発火する
+# ---------------------------------------------------------------------
+# なぜ push: main トリガーを削除したか（QA #6・2026-09-16）
+# ---------------------------------------------------------------------
+#
+# 旧仕様では push: main を「schedule 遅延の保険」として併設していたが、
+# Day8 の実機観測で以下の問題が判明：
+#   - push:main は merge 完了の 5 秒後に発火
+#   - Vercel 自動デプロイは 30〜90 秒かかる
+#   - つまり Cron は **旧コード** を叩いてしまい、新コードの検証にならない
+#
+# さらに 2026-09-16 の PR #7（Gmail Pub/Sub Push）実装で、
+# SLA 5 分以内が必要な Gmail クレーム経路が Cron 非依存になった。
+# Cron が担うのは以下だけになり、いずれも即時性は不要：
+#   - Gemini 分類 + Slack 投稿（通常問い合わせ・5 分程度の遅延許容）
+#   - Gmail Watch 期限更新（7 日期限に対し 24h 手前で再登録すれば十分）
+#
+# 以上より push: main トリガーは無意味なコストのみが残る状態となり、
+# schedule + workflow_dispatch の 2 段構えに簡素化した。
 #
 # ---------------------------------------------------------------------
 # SLA への影響
 # ---------------------------------------------------------------------
 #
 # - 緊急 LINE Push（クレーム SLA 5 分以内）：
-#   LINE Webhook 内で同期実行されるため、この Cron の遅延は SLA に影響しない
+#   LINE は Webhook 内で同期実行・Gmail は Pub/Sub Push で数秒到達
+#   → このワークフローの遅延は SLA に一切影響しない
 #
-# - Gmail 通常経路 / 通常メッセージの Slack 投稿：
-#   schedule 遅延の影響を受ける可能性あり
-#   運用者は「投稿が遅い」と感じたら Actions UI から workflow_dispatch で発火する
+# - 通常問い合わせの Slack 投稿：
+#   schedule 遅延の影響を受け得る（数時間 skip の場合あり）
+#   運用者は「投稿が遅い」と感じたら Actions UI から workflow_dispatch で発火
 #
 # ---------------------------------------------------------------------
 # 必要な GitHub Secrets
@@ -47,15 +63,10 @@ name: External Cron (Gmail poll + queue drain)
 # =====================================================================
 
 on:
-  # 【最も確実】手動発火。ポートフォリオでは動作確認の正式手段
+  # 【最も確実】手動発火。実機テスト・schedule 遅延時の即時消化はこちら
   workflow_dispatch:
 
-  # 【確実】main への push（PR マージ含む）で必ず発火
-  push:
-    branches:
-      - main
-
-  # 【ベストエフォート】schedule は保証なし。上記 2 つと併用して信頼性を確保
+  # 【ベストエフォート】schedule は保証なし。通常運用の Cron 発火はこちらが主
   schedule:
     - cron: "*/5 * * * *"
 

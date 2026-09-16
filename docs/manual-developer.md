@@ -539,6 +539,56 @@ gh run view <RUN_ID> --log 2>&1 | grep -E "notified|failed|deferred"
 
 
 
+### 監視 SQL（Supabase SQL Editor で実行）
+
+**Cron / Gemini / Slack の異常を早期発見するための SQL 群。**
+運用に慣れてきたら定期的に叩いて滞留・失敗の傾向を掴む。
+
+```sql
+-- ① 30 分以上 pending のまま滞留している行（Cron 停止 / Gemini quota / transient エラー継続の兆候）
+--    通常運用では 0 件が期待値。1 件でも出たら Cron の直近ログを確認する
+SELECT
+  id,
+  channel,
+  external_id,
+  created_at,
+  NOW() - created_at AS age
+FROM inquiry_queue
+WHERE status = 'pending'
+  AND created_at < NOW() - INTERVAL '30 minutes'
+ORDER BY created_at ASC;
+
+-- ② 過去 24 時間で failed に固定されたレコードの集計
+--    Slack 投稿失敗（3 回リトライ後）や Gemini permanent エラーの累積を把握する
+SELECT
+  category,
+  channel,
+  COUNT(*) AS failed_count,
+  MIN(created_at) AS oldest,
+  MAX(created_at) AS newest
+FROM inquiry_queue
+WHERE status = 'failed'
+  AND created_at > NOW() - INTERVAL '24 hours'
+GROUP BY category, channel
+ORDER BY failed_count DESC;
+
+-- ③ 直近 1 時間の緊急パス（is_urgent=TRUE）実績
+--    件数急増があればテスト送信 / 誤検知 / 実クレーム急増を判別する
+SELECT
+  channel,
+  COUNT(*) AS urgent_count,
+  MAX(classified_at) AS latest_urgent
+FROM inquiry_queue
+WHERE is_urgent = TRUE
+  AND created_at > NOW() - INTERVAL '1 hour'
+GROUP BY channel;
+```
+
+> ① で滞留が出た場合の一次対応は section 8「Gemini API が deferred を返し続ける」を参照。
+> ② が急増する場合は Slack Bot Token / チャネル ID の失効を疑う（section 8 参照）。
+
+
+
 ### 確認 4｜Slack への投稿確認
 
 ```
