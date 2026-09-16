@@ -229,7 +229,7 @@ npx next build
 | [プロジェクト概要](project-overview.md) | 全員（採用担当・クライアント・開発者）| 背景・現状課題・データフロー・技術選定 |
 | [要件定義書](requirements.md) | 開発者・ステークホルダー | 機能要件（F-01〜F-13）・DB スキーマ・受入条件（AC-001〜AC-015）・環境変数一覧 |
 | [運用マニュアル（詳細版）](docs/manual-operator.md) | 営業部長・現場スタッフ | 日常確認・緊急対応・トラブル判断・監視 SQL |
-| [運用マニュアル（A4 印刷版）](docs/manual-operator-print .html) | 現場配布・掲示用 | A4 縦 1 枚で完結する日常運用の要点だけ |
+| [運用マニュアル（A4 印刷版）](docs/manual-operator-print.html) | 現場配布・掲示用 | A4 縦 1 枚で完結する日常運用の要点だけ |
 | [開発者向け手順書（詳細版）](docs/manual-developer.md) | 引き継ぎ開発者 | セットアップ・デプロイ・環境変数投入・API キーローテーション・トラブルシュート |
 | [開発者向け QuickRef](docs/manual-developer-quickref.md) | 開発者（作業中）| エンドポイント対応表・環境変数マトリクス・トラブル判断フロー・デプロイ前チェックリスト |
 | [AGENTS.md（設計判断集）](AGENTS.md) | 引き継ぎ開発者・AI エージェント | 触ると壊れる箇所 10 項目・変更前に必ず読む設計判断 |
