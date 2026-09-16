@@ -18,6 +18,8 @@
 | F-09 | 監視 SQL | Supabase で未処理・失敗件数を確認 | 中 | MVP | AC-012 |
 | F-10 | デモ版（BYOK） | Gemini API キーを入力して分類体験 | 中 | デモ | AC-013 |
 | F-11 | LP | ポートフォリオ用ランディングページ | 中 | デモ | AC-014 |
+| F-12 | Gmail Pub/Sub Push | Gmail の新着メールを Pub/Sub 経由で数秒で検知（GitHub Actions schedule 遅延の影響を受けずクレーム SLA 5 分厳守を確実化） | 高 | MVP | AC-015 |
+| F-13 | Gemini API 予算監視 | 月間トークン使用量が予算の 80% 到達時に営業部長 LINE Push でアラート | 中 | MVP | 非機能要件表 |
 
 ---
 
@@ -111,7 +113,12 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 | `SLACK_CHANNEL_COMPLAINT` | クレームチャネル ID | Slack 管理画面 | **サーバー専用** |
 | `SLACK_CHANNEL_OTHER` | 要確認チャネル ID | Slack 管理画面 | **サーバー専用** |
 | `GEMINI_API_KEY` | Gemini API 分類 | Google AI Studio | **サーバー専用** |
-| `GEMINI_MODEL` | 使用モデル名（切替用） | - | **サーバー専用** |
+| `GEMINI_MODEL` | 使用モデル名（切替用・任意）| - | **サーバー専用** |
+| `GEMINI_MONTHLY_TOKEN_LIMIT` | 月間トークン予算（80% 到達で LINE アラート）| - | **サーバー専用** |
+| `CRON_SECRET` | `/api/cron/classify` の Bearer 認証（GitHub Actions Cron 保護）| 任意生成（`openssl rand -hex 32`）| **サーバー専用** |
+| `GOOGLE_CLOUD_PROJECT_ID` | Gmail Pub/Sub Push の GCP プロジェクト ID | GCP コンソール | **サーバー専用** |
+| `PUBSUB_TOPIC_NAME` | Gmail Watch が publish する Pub/Sub トピック名 | GCP コンソール | **サーバー専用** |
+| `GMAIL_PUSH_SECRET` | `/api/webhooks/gmail-push` の共有シークレット（GCP subscription URL の `?token=` と一致）| 任意生成（`openssl rand -hex 32`）| **サーバー専用** |
 
 > **`NEXT_PUBLIC_` を付けてよいのは Supabase の URL・ANON_KEY のみ。**
 > 他の環境変数に `NEXT_PUBLIC_` を付けると API キーがブラウザに配信される。
@@ -141,12 +148,20 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 
 **機能：** LINE Webhook の署名検証（R-16 対策）と Gmail 取り込み経路の認証
 
-> **📝 実装方針の変更（実装フェーズ中の判断）：**
-> Gmail は Google Cloud Pub/Sub による Push Webhook 方式ではなく、
+> **📝 実装方針の変更（実装フェーズ中の判断・2026-09-16 に再更新）：**
+>
+> 当初：Google Cloud Pub/Sub による Push Webhook を候補としつつ、MVP 期間短縮のため
 > **Vercel Function (Gmail Poller) が Gmail API を Bearer OAuth2 でポーリングする方式**を採用。
 > Poller は `/api/cron/classify` から呼び出される（Cron は `CRON_SECRET` の Bearer 認証で保護）。
-> このため AC-002 #3・#4 は Gmail Webhook 直接受信ではなく、
-> **Cron エンドポイントの Bearer 認証**として再定義する。
+>
+> **2026-09-16 追加：** GitHub Actions schedule の実測遅延（4 時間ノー発火の事例あり）で
+> Gmail クレーム経路の SLA 5 分違反が発生し得ることが判明したため、
+> **Poller は残しつつ Gmail Pub/Sub Push（`/api/webhooks/gmail-push`）を追加**した。
+> Push は SLA-critical パスとして即時性を担保し、Poller は Push 失敗時のフォールバックとして機能する。
+> Push エンドポイントは `?token=` クエリの `GMAIL_PUSH_SECRET` 共有シークレット認証で保護（AC-015 で詳細定義）。
+>
+> AC-002 #3・#4 は引き続き Cron エンドポイントの Bearer 認証を対象とし、
+> Push の認証は AC-015 で別建てで扱う。
 
 | # | 確認内容 | 確認方法 | 期待結果 |
 |---|---|---|---|
@@ -245,6 +260,10 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 > ⚠️ GitHub Actions の schedule はリポジトリ非アクティブ時に数時間〜数日遅延する既知の挙動がある（GitHub 公式ドキュメント記載）。`main` push トリガーを併設して PR マージ都度発火するように冗長化している（`.github/workflows/cron.yml`）。
 > **緊急通知（SLA 5 分以内）は Webhook 内で同期実行されるため Cron 遅延の影響を受けない。** Cron 遅延は Gmail 通常経路の Slack 投稿タイミングにのみ影響する。
 
+> 📌 **提案書とポートフォリオ実装の前提差分：**
+> 提案書ではクライアントが **Vercel 有料プラン（Pro）** を契約する前提で見積もっており、その場合は Vercel Cron のみで 5 分毎の実行が可能です。ポートフォリオ実装は開発者側の個人 Vercel Hobby 環境で動作させる制約から GitHub Actions Cron へ外部化しています。
+> **実運用（クライアント本番環境）への移行手順：** `.github/workflows/cron.yml` を削除し `vercel.json` に `crons` 設定を追加するだけで Vercel Cron に切り戻せます。アプリコードの変更は不要です。
+
 ---
 
 ### AC-010｜緊急通知パス（SLA 5 分以内）
@@ -319,6 +338,24 @@ GROUP BY status;
 
 ---
 
+### AC-015｜Gmail Pub/Sub Push 動作（SLA 5 分厳守の即時経路）
+
+**機能：** Gmail クレーム検知の SLA 5 分以内を保証するための Pub/Sub Push 受信（F-12・GitHub Actions schedule 遅延の影響を受けない即時経路）
+
+| # | 確認内容 | 確認方法 | 期待結果 |
+|---|---|---|---|
+| 1 | `?token=` クエリが `GMAIL_PUSH_SECRET` と一致しないリクエストが 401 を返す | 誤った token 付きで POST | `401 Unauthorized`（`crypto.timingSafeEqual` で定数時間比較） |
+| 2 | Push 受信で `pollGmailInbox()` が同期実行され、緊急検知時 `handleUrgent` が呼ばれる | ラベル `multichannel-inbox` 付きクレームメールを送信 | 数秒以内に営業部長個人 LINE Push が到達（実測 60 秒以内） |
+| 3 | Push 受信で通常メールが inquiry_queue に `status='pending'` で保存される | ラベル付き通常メールを送信 | 数秒以内に Supabase に INSERT され、次 Cron で分類される |
+| 4 | 同じメールで Push が複数配信されても Slack/LINE 通知が重複しない | 同じ historyId で 2 回配信（GCP コンソールから手動再配信）| `external_id` UNIQUE 制約（23505）で 2 通目は握りつぶされる |
+| 5 | Gmail Watch 期限が残り 24h 以下になったら `ensureGmailWatch()` が自動再登録する | Cron を発火 → Vercel ログの `gmailWatch.renewed` を確認 | 期限内なら `renewed: false, reason: "残り Xh"`・24h 以下なら `renewed: true` |
+| 6 | Push endpoint は 障害時でも 200 を返す（Pub/Sub のリトライ抑止）| pollGmailInbox が throw する状況で Push 受信 | `200 OK` + `pollError` にエラーメッセージ・Pub/Sub は再送しない |
+
+> **設計の要：** Push が壊れても Cron（`/api/cron/classify`）が Gmail Watch を維持し続けるフォールバック構造（AGENTS.md「触ると壊れる箇所」§8 参照）。
+> **認証方式：** OIDC ではなく共有シークレット方式（GCP 追加設定不要・依存ライブラリ追加なし・攻撃面が小さい）。詳細は AGENTS.md §8。
+
+---
+
 ## 非機能要件
 
 | 項目 | 要件 | 根拠 |
@@ -328,7 +365,7 @@ GROUP BY status;
 | 冪等性 | 同じ `external_id` を 2 回処理しない | UNIQUE 制約による保証（R-07） |
 | セキュリティ | 全 Webhook で署名検証を実装 | 偽リクエスト対策（R-16） |
 | コスト | 月額 3,000〜3,300 円以内（実運用時） | 提案書記載 |
-| 可用性 | Vercel Hobby プラン（Cron は 1 日 1 回まで・**GitHub Actions Cron に外部化して回避**） | Hobby プランの制約 |
+| 可用性 | **提案書ではクライアント側 Vercel 有料プラン（Pro）契約前提**。ポートフォリオ実装は開発者側 Hobby プランで代替構成（Cron は 1 日 1 回まで・**GitHub Actions Cron に外部化して回避**） | 詳細は AC-009 の補足を参照 |
 
 ---
 
@@ -363,8 +400,8 @@ GROUP BY status;
 | 決定事項 | 採用した方針 | 採用理由 |
 |---|---|---|
 | 緊急パスの設計 | Cron を経由しない。Webhook 受信と同じ関数内で即時処理 | GitHub Actions Cron は 5 分間隔かつ schedule 遅延の可能性があり、SLA 5 分厳守を保証できない（R-10）|
-| 定期実行の実装 | Vercel Cron から GitHub Actions Cron（5 分・push:main 併用）へ移行 | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ、無料枠内で 5 分間隔を実現するため |
-| Gmail 取り込み | Push Webhook（Pub/Sub）から Cron ベースのポーリングへ変更 | 追加インフラ（Pub/Sub トピック / OIDC サービスアカウント）を持たずに MVP を成立させるため |
+| 定期実行の実装 | Vercel Cron → GitHub Actions Cron（5 分・当初は push:main 併用）→ 2026-09-16 に push:main トリガーを削除して schedule + workflow_dispatch の 2 段構えへ簡素化 | Hobby プランの Cron 1 日 1 回制約回避。push:main は Vercel デプロイ完了前に発火して旧コードを叩く問題があり、かつ PR #7 で SLA-critical パスが Cron 非依存化したため削除（詳細は `.github/workflows/cron.yml` ヘッダコメント）|
+| Gmail 取り込み | 当初 Poller のみ → 2026-09-16 に **Pub/Sub Push 併用** へ発展。Push が SLA-critical パス・Poller が Push 失敗時のフォールバック | GitHub Actions schedule 遅延（4 時間ノー発火の実測あり）で Gmail クレームの SLA 5 分違反が起こり得るため、Pub/Sub Push で即時性を担保（F-12・AC-015）|
 | 緊急キーワード | URGENT_PATTERN `/クレーム\|苦情\|至急\|緊急対応\|怒り/` + NEGATION_PATTERN で否定形除外の 2 段階判定 | No.20「クレームとして」等の派生表現を拾いつつ、No.22「緊急ではありません」や仮想の「クレームではありません」等の否定形を除外する。「緊急」単体は含めない |
 | クレームの境界線 | 迷った場合は「クレーム」に分類（安全側） | 見逃しのコストが誤検知のコストより大きい |
 | Cron 上限 | 1 回あたり最大 20 件 | Gemini API のレート制限・コスト超過防止（R-13） |

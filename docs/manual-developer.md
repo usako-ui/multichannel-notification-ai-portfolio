@@ -3,12 +3,15 @@
 # マルチチャネル通知システム｜manual-developer.md
 
 > **対象読者：** このシステムを引き継いだ開発者・運用担当者
-> **最終更新：** 2026-09-14（本番リリース時点の実装を反映）
+> **最終更新：** 2026-09-16（PR #7-9 Pub/Sub Push・QA 消化・AGENTS 拡充を反映）
 > **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
 > **リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-portfolio
 >
 > **本番リリース時に判明した実運用ポイントは「8. トラブルシューティング」に集約しています。**
 > **AI エージェント向けの「触ると壊れる箇所」は `AGENTS.md` を参照してください（本ドキュメント section 10 から誘導）。**
+
+> ⚡ **急いでいる場合：** [`manual-developer-quickref.md`](./manual-developer-quickref.md) を先に見てください。
+> エンドポイント対応表・環境変数マトリクス・トラブルシュート判断フロー（mermaid）・デプロイ前チェックリストを 1 枚に凝縮した QuickRef です。本ドキュメントは詳細手順・OAuth フロー・実行コマンド例のリファレンスとして併用してください。
 
 ---
 
@@ -858,27 +861,119 @@ permanent エラー（4xx 認証・モデル 404 など）のみ `status='failed
 
 ## 9. APIキーローテーション手順
 
-**APIキーが漏洩した疑いがある場合の緊急対応手順：**
+### キーが漏洩・期限切れになったと気づいたら
 
-### 即座に行うこと（漏洩確認後 30 分以内）
+⚠️ **慌てず以下の順番で対応してください。**
+漏洩したキーを先に無効化 → 新しいキーを発行 → Vercel に設定 → 動作確認
 
-```
-1. 漏洩したキーを即時無効化する
-   - LINE：LINE Developers > チャネルアクセストークン > 「発行」（古いトークンが無効化される）
-   - Slack：Slack App > OAuth & Permissions > トークンを「Revoke」
-   - Gemini：Google AI Studio > APIキー > 「Delete」
-   - Supabase service_role：Supabase > Settings > API > 「Rotate」
-   - Gmail OAuth：Google Cloud Console > 認証情報 > クライアントを「削除」して再作成
+各サービスの手順を下記に示します。**旧キーの無効化と新キー発行はサービス側の 1 操作で同時完結する場合が多い**ため、順番は「無効化 = 発行」→「Vercel 更新」→「動作確認」の 3 ステップで進めます。
 
-2. 新しいキーを発行する（各サービスの管理画面）
+---
 
-3. Vercel の環境変数を新しいキーに更新する
-   Vercel ダッシュボード → Settings → Environment Variables → 値を上書き → Save
+### LINE Channel Secret / Channel Access Token
 
-4. Vercel で Redeploy する（環境変数の変更を反映させる）
+**再発行 URL：** https://developers.line.biz/console/
 
-5. 動作確認する（7. デプロイ後の疎通確認 を実施）
-```
+**操作手順：**
+1. LINE Developers にログイン
+2. 対象チャネルを選択 → 「Messaging API 設定」
+3. Channel Secret / Access Token の「再発行」をクリック（旧値は同時に無効化される）
+4. 新しい値をコピー
+5. Vercel 環境変数を更新（下記「Vercel 環境変数の更新手順（共通）」参照）
+
+**対象環境変数：** `LINE_CHANNEL_SECRET` / `LINE_CHANNEL_ACCESS_TOKEN`
+
+---
+
+### Slack Bot Token
+
+**再発行 URL：** https://api.slack.com/apps
+
+**操作手順：**
+1. Slack API 管理画面にログイン
+2. 対象アプリを選択 → 「OAuth & Permissions」
+3. 「Reinstall to Workspace」で再発行
+4. 新しい Bot User OAuth Token（`xoxb-` で始まる）をコピー
+5. Vercel 環境変数を更新
+
+**対象環境変数：** `SLACK_BOT_TOKEN`
+
+> ⚠️ Windows 環境で CLI から値をパイプする場合は `tr -d '\r\n'` を必ず使う（section 8「Windows CRLF 問題」参照）
+
+---
+
+### Gmail OAuth（GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET）
+
+**再発行 URL：** https://console.cloud.google.com/
+
+**操作手順：**
+1. GCP コンソール → 「API とサービス」 → 「認証情報」
+2. 対象の OAuth 2.0 クライアントを選択
+3. 「シークレットをリセット」
+4. 新しい値をコピー
+5. **Refresh Token も再取得が必要**（section 5「Gmail OAuth 本番設定 STEP 2」参照）
+6. Vercel 環境変数を更新
+
+**対象環境変数：** `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN`
+
+> ⚠️ Client Secret を更新すると既存の Refresh Token は無効化される。**必ず新 Refresh Token を同時取得すること**
+
+---
+
+### Gemini API Key
+
+**再発行 URL：** https://aistudio.google.com/app/apikey
+
+**操作手順：**
+1. Google AI Studio にログイン
+2. 旧キーを削除 → 「Create API Key」
+3. 新しい値をコピー
+4. Vercel 環境変数を更新
+
+**対象環境変数：** `GEMINI_API_KEY`
+
+---
+
+### Supabase（ANON KEY / SERVICE ROLE KEY）
+
+**再発行 URL：** https://supabase.com/dashboard/
+
+**操作手順：**
+1. Supabase ダッシュボード → 対象プロジェクト → 「Settings」 → 「API」
+2. 「Reset」で再発行
+3. 新しい値をコピー
+4. Vercel 環境変数を更新
+
+**対象環境変数：** `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+
+> ⚠️ `SERVICE_ROLE_KEY` 漏洩は RLS バイパス全開になるため最優先対応。**漏洩から 30 分以内に必ずローテーションすること**
+
+---
+
+### Vercel 環境変数の更新手順（共通）
+
+1. https://vercel.com/dashboard にログイン
+2. 対象プロジェクトを選択 → 「Settings」 → 「Environment Variables」
+3. 対象の変数名を検索 → 値を更新 → 「Save」
+4. **必ず再デプロイを実行する**
+   ```bash
+   vercel --prod --yes
+   ```
+   ※ ウォームコンテナが古い値を保持するため再デプロイ必須（section 8「Vercel 環境変数を変更したのに反映されない」参照）
+
+---
+
+### 更新後の動作確認チェックリスト
+
+1 件ずつ順に実施し、すべて OK になれば完了です。
+
+- [ ] LINE でテストメッセージを送信 → Slack `#賃貸` 等に届く
+- [ ] Gmail に件名 `【問い合わせ】〜` のテストメールを送信 → Slack に届く
+- [ ] クレームキーワード（「クレームです、至急対応お願いします」等）を含むテストメールを送信 → 営業部長個人 LINE に届く
+- [ ] Supabase SQL Editor で `SELECT status, COUNT(*) FROM inquiry_queue WHERE created_at > NOW() - INTERVAL '1 hour' GROUP BY status;` を実行 → `failed` が増えていない
+- [ ] Vercel の Function ログで直近 5 分間に 401 / 500 が出ていない
+
+**万一 failed が急増する場合：** Vercel 環境変数の値に改行 / 空白が混入していないか確認（CRLF 問題を疑う）→ 再入力 → 再デプロイ。
 
 ---
 

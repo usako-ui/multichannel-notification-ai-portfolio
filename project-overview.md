@@ -86,27 +86,32 @@ Gemini API で 5 カテゴリに自動分類して担当チャネルへ振り分
 ## システム全体のデータフロー
 
 ```
-Gmail / LINE公式
-  ↓（Webhook）
-Vercel Functions（app/api/webhooks/）
-  ↓（緊急キーワード判定）
-  ├── 緊急（クレーム系キーワード検出）
-  │     → handleUrgent()
-  │       ① Supabase に保存（is_urgent=TRUE・status=classified）
-  │       ② Slack `#クレーム緊急` に投稿（記録用）
-  │       ③ 営業部長 個人LINE へ Push（SLA 5分以内）
-  └── 通常
-        → Supabase inquiry_queue へ保存（status=pending）
-              ↓（GitHub Actions Cron 5分ごと + main push トリガー）
-        app/api/cron/classify/route.ts
-              ↓（最大20件/回）
-        classifyWithGemini()
-        → 5カテゴリに分類
-              ↓
-        postToSlack()
-        → 各カテゴリの Slack チャネルへ投稿（#賃貸 / #売買 / #内見 / #要確認）
-              ↓
-        inquiry_queue status → notified
+LINE 公式 ────→ /api/webhooks/line（LINE 署名検証・HMAC-SHA256）
+                    │
+Gmail ─┬─────→ /api/webhooks/gmail-push（Pub/Sub Push・?token 共有シークレット）
+       │              │  ← SLA-critical 経路（数秒以内）
+       └─ Cron ─→ /api/cron/classify → pollGmailInbox（ラベル multichannel-inbox）
+                     │  ← フォールバック経路（5 分周期）
+                     ↓
+              （共通・緊急キーワード判定）
+                     ├── 緊急（クレーム系キーワード検出）
+                     │     → handleUrgent()
+                     │       ① Supabase に保存（is_urgent=TRUE・status=classified）
+                     │       ② Slack #クレーム緊急 に投稿（🚨 マーク付き）
+                     │       ③ 営業部長個人 LINE へ Push（SLA 5 分以内・実測 60 秒以内）
+                     └── 通常
+                           → Supabase inquiry_queue へ保存（status=pending）
+                                 ↓（GitHub Actions Cron 5 分ごと・schedule + workflow_dispatch）
+                           app/api/cron/classify/route.ts
+                                 ↓（最大 20 件/回）
+                           classifyWithGemini()
+                                 ↓ 5 カテゴリに分類
+                           postToSlack()
+                                 ↓ 各カテゴリの Slack チャネルへ投稿
+                           inquiry_queue status → notified
+
+補助経路：Cron 実行時に ensureGmailWatch() が Gmail Watch 期限をチェックし、
+         残り 24h 以下で users.watch を自動再登録（Push を継続受信するため）。
 ```
 
 ---
@@ -118,11 +123,18 @@ Vercel Functions（app/api/webhooks/）
 | Next.js 14 | Vercel との親和性・App Router で Webhook / Cron を同一プロジェクトで管理できる |
 | Supabase | DB・キュー管理をワンストップ提供。無料プランで MVP 検証が可能 |
 | Gemini API | 検証環境のコスト最小化（無料枠）。本番移行時に再評価する |
-| GitHub Actions Cron | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ 5 分間隔を無料枠で実現。`main` push トリガーを併設して schedule 遅延をカバー |
+| GitHub Actions Cron | Vercel Hobby プランの Cron 1 日 1 回制約を回避しつつ 5 分間隔を無料枠で実現。2026-09-16 に push:main トリガーを削除して schedule + workflow_dispatch の 2 段構えへ簡素化（詳細は `.github/workflows/cron.yml` ヘッダ） |
 | Vercel Functions | Webhook 受信器として機能。常時起動サーバー不要でコストを削減 |
+| Google Cloud Pub/Sub Push | Gmail クレームの SLA 5 分厳守のため 2026-09-16 に追加導入。GitHub Actions schedule 遅延（実測 4 時間ノー発火あり）の影響を受けない即時経路。`/api/webhooks/gmail-push` エンドポイントに Pub/Sub Push で通知され、pollGmailInbox 再利用で緊急検知＋handleUrgent を数秒で実行（F-12・AC-015） |
 
 > **Gemini API は今回の検証環境のみ。**
 > 実運用開始時はデータ送信ポリシー・コスト・精度を再評価して最終構成を決定する。
+
+> 📌 **Cron 構成の補足（模擬案件提案書との差分）**
+>
+> 提案書ではクライアントが **Vercel 有料プラン（Pro）** を契約する前提で見積もっており、その場合は Vercel Cron のみで `/api/cron/classify` を 5 分毎に発火する構成が最適です。
+> 本ポートフォリオ実装は **開発者側の個人無料開発環境（Vercel Hobby）** で構築する制約上、Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避するために GitHub Actions Cron へ外部化しています。
+> **実運用時（クライアント本番環境）：** `.github/workflows/cron.yml` を削除し `vercel.json` に `crons` 設定を追加することで Vercel Cron に切り戻せます。アプリコードの変更は不要です。
 
 ---
 
@@ -130,7 +142,7 @@ Vercel Functions（app/api/webhooks/）
 
 - 開発期間：要件定義確定後 約7営業日（テスト・修正バッファ込み）
 - 予算：初期 148,000 円 / 月額 約 3,000〜3,300 円（実運用時）
-- Vercel：Hobby プラン（Cron は 1 日 1 回まで。**GitHub Actions Cron に外部化して回避**）
+- Vercel：**提案書ではクライアント側が Vercel 有料プラン（Pro）契約前提**。ポートフォリオ実装は開発者側 Hobby プランで代替構成（Cron は 1 日 1 回まで。**GitHub Actions Cron に外部化して回避**）
 - Supabase：無料プラン（1 週間非活動でプロジェクトが一時停止する。週 1 回以上操作すること）
 - LINE 公式：無料プラン（Push Message は月 200 通まで。クレームは月 75 件想定で範囲内）
 - Gemini API は検証環境のみ。本番移行時に有料 API へ切り替えて再検証する

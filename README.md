@@ -8,6 +8,19 @@
 
 ---
 
+## 📌 本ポートフォリオの前提について
+
+元となる模擬案件の提案書では **Vercel 有料プラン（Pro）** を想定しており、その場合 Vercel Cron が実質無制限に使えるため `/api/cron/classify` は Vercel Cron のみでシンプルに構成できます。
+
+一方、**本ポートフォリオ実装は個人の無料開発環境（Vercel Hobby）** で構築するという制約があるため、Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避する目的で **GitHub Actions Cron へ外部化** しています。この構成差はコード側で吸収されており、SLA 5 分厳守が求められるクレーム経路は Webhook / Pub/Sub Push で処理されるため実運用上の影響はありません。
+
+**実運用時（有料プラン移行時）の切り戻し手順：**
+- `.github/workflows/cron.yml` を削除
+- `vercel.json` に `crons` 設定を追加（例：`"crons": [{ "path": "/api/cron/classify", "schedule": "*/5 * * * *" }]`）
+- アプリコードの変更は不要
+
+---
+
 ## このプロジェクトが解決すること
 
 ### 課題（現場の困りごと）
