@@ -124,13 +124,19 @@ Vercel Functions（app/api/webhooks/）
 > **Gemini API は今回の検証環境のみ。**
 > 実運用開始時はデータ送信ポリシー・コスト・精度を再評価して最終構成を決定する。
 
+> 📌 **Cron 構成の補足（模擬案件提案書との差分）**
+>
+> 提案書ではクライアントが **Vercel 有料プラン（Pro）** を契約する前提で見積もっており、その場合は Vercel Cron のみで `/api/cron/classify` を 5 分毎に発火する構成が最適です。
+> 本ポートフォリオ実装は **開発者側の個人無料開発環境（Vercel Hobby）** で構築する制約上、Hobby プランの Cron 制約（各 Cron は 1 日 1 回まで）を回避するために GitHub Actions Cron へ外部化しています。
+> **実運用時（クライアント本番環境）：** `.github/workflows/cron.yml` を削除し `vercel.json` に `crons` 設定を追加することで Vercel Cron に切り戻せます。アプリコードの変更は不要です。
+
 ---
 
 ## 制約・前提
 
 - 開発期間：要件定義確定後 約7営業日（テスト・修正バッファ込み）
 - 予算：初期 148,000 円 / 月額 約 3,000〜3,300 円（実運用時）
-- Vercel：Hobby プラン（Cron は 1 日 1 回まで。**GitHub Actions Cron に外部化して回避**）
+- Vercel：**提案書ではクライアント側が Vercel 有料プラン（Pro）契約前提**。ポートフォリオ実装は開発者側 Hobby プランで代替構成（Cron は 1 日 1 回まで。**GitHub Actions Cron に外部化して回避**）
 - Supabase：無料プラン（1 週間非活動でプロジェクトが一時停止する。週 1 回以上操作すること）
 - LINE 公式：無料プラン（Push Message は月 200 通まで。クレームは月 75 件想定で範囲内）
 - Gemini API は検証環境のみ。本番移行時に有料 API へ切り替えて再検証する

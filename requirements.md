@@ -245,6 +245,10 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 > ⚠️ GitHub Actions の schedule はリポジトリ非アクティブ時に数時間〜数日遅延する既知の挙動がある（GitHub 公式ドキュメント記載）。`main` push トリガーを併設して PR マージ都度発火するように冗長化している（`.github/workflows/cron.yml`）。
 > **緊急通知（SLA 5 分以内）は Webhook 内で同期実行されるため Cron 遅延の影響を受けない。** Cron 遅延は Gmail 通常経路の Slack 投稿タイミングにのみ影響する。
 
+> 📌 **提案書とポートフォリオ実装の前提差分：**
+> 提案書ではクライアントが **Vercel 有料プラン（Pro）** を契約する前提で見積もっており、その場合は Vercel Cron のみで 5 分毎の実行が可能です。ポートフォリオ実装は開発者側の個人 Vercel Hobby 環境で動作させる制約から GitHub Actions Cron へ外部化しています。
+> **実運用（クライアント本番環境）への移行手順：** `.github/workflows/cron.yml` を削除し `vercel.json` に `crons` 設定を追加するだけで Vercel Cron に切り戻せます。アプリコードの変更は不要です。
+
 ---
 
 ### AC-010｜緊急通知パス（SLA 5 分以内）
@@ -328,7 +332,7 @@ GROUP BY status;
 | 冪等性 | 同じ `external_id` を 2 回処理しない | UNIQUE 制約による保証（R-07） |
 | セキュリティ | 全 Webhook で署名検証を実装 | 偽リクエスト対策（R-16） |
 | コスト | 月額 3,000〜3,300 円以内（実運用時） | 提案書記載 |
-| 可用性 | Vercel Hobby プラン（Cron は 1 日 1 回まで・**GitHub Actions Cron に外部化して回避**） | Hobby プランの制約 |
+| 可用性 | **提案書ではクライアント側 Vercel 有料プラン（Pro）契約前提**。ポートフォリオ実装は開発者側 Hobby プランで代替構成（Cron は 1 日 1 回まで・**GitHub Actions Cron に外部化して回避**） | 詳細は AC-009 の補足を参照 |
 
 ---
 

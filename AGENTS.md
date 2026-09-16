@@ -141,6 +141,11 @@ const URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/;
 - **LINE 無料プランの制約：** Push Message は月 200 通まで。クレームは月 75 件想定で範囲内
 - **Gemini API 無料枠：** RPD 250 リクエスト/日・15 RPM。実測で 1 セッションのテスト連投で枯渇した実績あり
 
+> 📌 **模擬案件クライアント想定との差分について**
+>
+> 元となる模擬案件の提案書では **Vercel 有料プラン（Pro）** を想定しており、その場合は Vercel Cron が実質無制限に使えるため `/api/cron/classify` は Vercel Cron のみでシンプルに構成できます。
+> 本ポートフォリオ実装は **個人の無料開発環境（Vercel Hobby）** で構築する制約上、GitHub Actions Cron へ外部化しています。実運用時（有料プラン移行時）は `.github/workflows/cron.yml` を削除し `vercel.json` に `crons` を追加するだけで切り戻し可能で、アプリコードの変更は不要です。SLA 5 分厳守のクレーム経路は Webhook / Pub/Sub Push 側で処理されるため、Cron 構成差の影響は受けません。
+
 ---
 
 ## 触ると壊れる箇所
