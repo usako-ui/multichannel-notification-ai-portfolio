@@ -306,6 +306,107 @@ if (error) {
 
 ---
 
+### 8. Gmail Pub/Sub Push の設計制約（`app/api/webhooks/gmail-push/route.ts` + `lib/gmailPoller.ts`）
+
+**症状：** Gmail クレームが管理者 LINE に届かない・Watch が期限切れで Push が止まる・同じメールで通知が二重に飛ぶ。
+
+**背景：** 2026-09-16 の PR #7 で Gmail クレームの SLA 5 分以内を確実に達成するため Pub/Sub Push を追加。GitHub Actions schedule が数時間 skip される事象が実測されたのが導入動機。
+
+**設計上の絶対ルール：**
+
+- **`gmail-push/route.ts` は `pollGmailInbox()` を再利用する。** `isUrgent` / `handleUrgent` / `supabaseAdmin` を独自に呼び直さない。
+  重複実装すると片方だけロジック改修されて挙動がズレる（例：緊急判定を二段階化した PR #6 の修正が Push 側に反映されない等）。
+- **Gmail Watch は 7 日で期限切れ。** `ensureGmailWatch()` が毎 Cron 実行時に「残り 24h 以下」で `users.watch` を自動再登録する。手動で止めない・キャッシュ変数（`cachedWatchExpiration`）を勝手に書き換えない。
+- **`GMAIL_PUSH_SECRET` は 2 箇所で完全一致させる：**
+  1. Vercel の環境変数 `GMAIL_PUSH_SECRET`
+  2. GCP Pub/Sub サブスクリプションの Push エンドポイント URL の `?token=...`
+  どちらか片方だけ変更すると即座に 401 Unauthorized で Push が全滅する（`crypto.timingSafeEqual` で 1 文字も違わずに一致していないと通らない）。
+- **Push エンドポイントの URL は `/api/webhooks/gmail-push`（`?token=` クエリで認証）。** OIDC ではない・Authorization ヘッダは Google 側が勝手に付けるが本エンドポイントは無視する設計。
+- **`historyId` はアプリで管理しない。** 重複配信は `external_id` UNIQUE 制約（23505）で吸収される。Supabase に Watch state 用テーブルを追加すると設計が複雑化するのでやらない。
+
+**触ってはいけない：**
+- `pollGmailInbox()` を経由せずに Push route から直接 `handleUrgent()` を呼ぶような「効率化」リファクタ（緊急判定・重複吸収・ラベル残置の各設計がすべて壊れる）
+- Watch 期限のキャッシュを永続化するために新テーブルを足すこと（設計判断でインメモリのみに決めた・PR #7 の設計書参照）
+
+> **PR #7 で導入・実機検証で Gmail クレーム SLA が 60 秒未満に短縮できた実績あり。**
+
+---
+
+### 9. GitHub Actions Cron のトリガー設計（`.github/workflows/cron.yml`）
+
+**症状：** PR マージ直後に Cron が発火して古いコードを叩く・schedule が数時間発火しない・Cron が全く動かない。
+
+**背景：**
+- 2026-09-15 に schedule 遅延（4 時間ノー発火）が実測された
+- 過去 PR #9 で「schedule の保険」として `push: main` トリガーを追加したが、Day8 分析で「merge の 5 秒後に発火するが Vercel デプロイは 30〜90 秒かかる → 旧コードを叩くだけ」と判明
+- PR #7 で Gmail クレームも Cron 非依存になり、Cron の即時性要求そのものが消えた
+- 上記を受けて **PR #8 で `push: main` トリガーを削除**した
+
+**現状のトリガー：**
+```yaml
+on:
+  workflow_dispatch:    # 手動発火（正規手段）
+  schedule:
+    - cron: "*/5 * * * *"  # ベストエフォート（遅延あり）
+```
+
+**運用ルール：**
+- **通常運用：** schedule に任せる（数時間 skip されても Gmail クレームは Pub/Sub Push・LINE クレームは Webhook で処理されるため SLA 影響なし）
+- **手動発火が必要な場面：** `gh workflow run cron.yml` または GitHub Actions UI から明示発火する
+  - PR マージ後の実機テスト
+  - schedule が長時間止まっていると気付いたとき
+  - Gemini quota リセット後の deferred 消化を急ぎたいとき
+
+**絶対にやってはいけない：**
+- `push: main` トリガーを「気軽に」再追加する（PR #8 で削除した根拠を無効化するなら、事前に「Vercel デプロイ完了を待つ step」も同時に追加すること）
+- schedule の間隔を 1 分毎などに短縮する（GitHub Actions の quota 消費が増えるだけで実効遅延は変わらない）
+
+> **PR #8 で削除・詳細な削除理由は cron.yml のヘッダコメント参照。**
+
+---
+
+### 10. 緊急判定の二段階設計（`lib/urgentDetection.ts`）
+
+**症状：** 「クレームではありません」が誤って緊急パスに流れて管理者 LINE に誤送信される・逆に「クレームとして正式に申し入れます」が拾われずに通常キューに流れる。
+
+**背景：**
+- 初期実装では `URGENT_PATTERN = /クレームです|苦情|至急|緊急対応|怒り/` のみだった
+- 「クレームとして申し入れます」を拾うために `クレーム` 単体を追加すると「クレームではありません」まで誤検知した
+- PR #6 で **URGENT + NEGATION の二段階判定** に刷新して両立させた
+
+**現状の設計（触るときの前提）：**
+
+```typescript
+// lib/urgentDetection.ts
+export const URGENT_PATTERN = /クレーム|苦情|至急|緊急対応|怒り/;
+const NEGATION_PATTERN = /(?:クレーム|苦情|至急|怒り).{0,15}(?:では(?:あり)?ま?せん|じゃ(?:あり)?ま?せん|ではない|じゃない)/;
+
+export function isUrgent(content: string): boolean {
+  if (!URGENT_PATTERN.test(content)) return false;
+  if (NEGATION_PATTERN.test(content)) return false;
+  return true;
+}
+```
+
+- 拾い漏らさない（URGENT を広めに）→ 誤検知は NEGATION で除外という順番
+- 「クレームとして」→ 緊急判定 ✅（URGENT に一致・NEGATION に不一致）
+- 「クレームではありません」→ 通常判定 ✅（URGENT に一致するが NEGATION でも一致するため除外）
+- 「緊急」単体は URGENT_PATTERN に **含めない**（「これは緊急ではありません」を通常パスに流すため・NEGATION で除外しきれないので）
+
+**触るときの必須手順：**
+- `URGENT_PATTERN` / `NEGATION_PATTERN` を変更したら **CSV テスト 22 件（`docs/case5-test-inquiries.csv`）で回帰確認必須**
+- 特に境界例：No.19（クレーム系）・No.20（クレーム系）・No.21（無関係な話題）・No.22（「これは緊急ではありません」＝通常パス期待）
+- CSV でテストできない新パターンを想定する場合は仮想テストケースを `node -e` で書き足してから変更する
+
+**触ってはいけない：**
+- 「緊急」単体を URGENT_PATTERN に追加する（No.22 が壊れる）
+- NEGATION_PATTERN の距離 `.{0,15}` を短くする（「クレームだと思うがそうではない」等の長めの否定文が拾えなくなる）
+- 件名を渡さずに本文だけで判定する（Gmail の場合は必ず `【件名】{subject}\n{body}` 形式で結合してから渡す・`lib/gmailPoller.ts` 参照）
+
+> **PR #6 で導入・CSV 4 件 + 仮想 7 件の 11 テストで全 PASS 確認済み。**
+
+---
+
 ## 環境変数
 
 `.env.example` にキー名の一覧があります（全 18 件）。値は引き渡し元に確認してください。
