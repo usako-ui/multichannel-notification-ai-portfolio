@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" font-family="'Inter', 'Hiragino Sans', system-ui, sans-serif">
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="620" fill="#F8FAFC"/>
+
+  <text x="500" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A">環境変数マップ｜全 20 変数を経路上に配置</text>
+  <text x="500" y="54" text-anchor="middle" font-size="11" fill="#64748B">NEXT_PUBLIC_ プレフィックスは Supabase URL / ANON_KEY のみ・他は全てサーバー専用</text>
+
+  <g filter="url(#s)">
+    <rect x="40" y="90" width="200" height="180" rx="10" fill="#FFFFFF" stroke="#3ECF8E" stroke-width="1.5"/>
+    <rect x="40" y="90" width="200" height="32" rx="10" fill="#3ECF8E"/>
+    <text x="140" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">🟢 Supabase（3）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="52" y="146">NEXT_PUBLIC_SUPABASE_URL</text>
+      <text x="52" y="164" font-size="9" fill="#94A3B8">🌐 ブラウザ可</text>
+
+      <text x="52" y="184">NEXT_PUBLIC_SUPABASE_ANON_KEY</text>
+      <text x="52" y="202" font-size="9" fill="#94A3B8">🌐 ブラウザ可（RLS で保護）</text>
+
+      <text x="52" y="222">SUPABASE_SERVICE_ROLE_KEY</text>
+      <text x="52" y="240" font-size="9" fill="#B91C1C">🔒 サーバー専用（RLS バイパス）</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="260" y="90" width="200" height="180" rx="10" fill="#FFFFFF" stroke="#06C755" stroke-width="1.5"/>
+    <rect x="260" y="90" width="200" height="32" rx="10" fill="#06C755"/>
+    <text x="360" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">💬 LINE（3）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="272" y="146">LINE_CHANNEL_SECRET</text>
+      <text x="272" y="164" font-size="9" fill="#94A3B8">🔒 Webhook 署名検証</text>
+
+      <text x="272" y="184">LINE_CHANNEL_ACCESS_TOKEN</text>
+      <text x="272" y="202" font-size="9" fill="#94A3B8">🔒 Push API 送信</text>
+
+      <text x="272" y="222">LINE_MANAGER_USER_ID</text>
+      <text x="272" y="240" font-size="9" fill="#94A3B8">🔒 営業部長 LINE ID</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="480" y="90" width="200" height="180" rx="10" fill="#FFFFFF" stroke="#EA4335" stroke-width="1.5"/>
+    <rect x="480" y="90" width="200" height="32" rx="10" fill="#EA4335"/>
+    <text x="580" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">📧 Gmail OAuth（3）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="492" y="146">GMAIL_CLIENT_ID</text>
+      <text x="492" y="164" font-size="9" fill="#94A3B8">🔒 OAuth クライアント</text>
+
+      <text x="492" y="184">GMAIL_CLIENT_SECRET</text>
+      <text x="492" y="202" font-size="9" fill="#94A3B8">🔒 OAuth シークレット</text>
+
+      <text x="492" y="222">GMAIL_REFRESH_TOKEN</text>
+      <text x="492" y="240" font-size="9" fill="#94A3B8">🔒 prompt=consent で取得</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="700" y="90" width="260" height="180" rx="10" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.5"/>
+    <rect x="700" y="90" width="260" height="32" rx="10" fill="#4285F4"/>
+    <text x="830" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">🔔 Gmail Pub/Sub Push（3）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="712" y="146">GOOGLE_CLOUD_PROJECT_ID</text>
+      <text x="712" y="164" font-size="9" fill="#94A3B8">🔒 GCP プロジェクト ID</text>
+
+      <text x="712" y="184">PUBSUB_TOPIC_NAME</text>
+      <text x="712" y="202" font-size="9" fill="#94A3B8">🔒 Watch publish 先</text>
+
+      <text x="712" y="222">GMAIL_PUSH_SECRET</text>
+      <text x="712" y="240" font-size="9" fill="#B91C1C">🔒 GCP subscription URL の ?token= と厳密一致</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="40" y="300" width="420" height="180" rx="10" fill="#FFFFFF" stroke="#4A154B" stroke-width="1.5"/>
+    <rect x="40" y="300" width="420" height="32" rx="10" fill="#4A154B"/>
+    <text x="250" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">💬 Slack（6）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="52" y="356">SLACK_BOT_TOKEN</text>
+      <text x="52" y="374" font-size="9" fill="#94A3B8">🔒 全チャネル投稿権限（xoxb-）</text>
+
+      <text x="52" y="398">SLACK_CHANNEL_RENTAL</text>
+      <text x="220" y="398" font-size="9" fill="#94A3B8"># 賃貸</text>
+
+      <text x="52" y="416">SLACK_CHANNEL_SALE</text>
+      <text x="220" y="416" font-size="9" fill="#94A3B8"># 売買</text>
+
+      <text x="52" y="434">SLACK_CHANNEL_VIEWING</text>
+      <text x="220" y="434" font-size="9" fill="#94A3B8"># 内見</text>
+
+      <text x="52" y="452">SLACK_CHANNEL_COMPLAINT</text>
+      <text x="220" y="452" font-size="9" fill="#B91C1C"># クレーム緊急</text>
+
+      <text x="52" y="470">SLACK_CHANNEL_OTHER</text>
+      <text x="220" y="470" font-size="9" fill="#94A3B8"># 要確認</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="480" y="300" width="260" height="180" rx="10" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.5"/>
+    <rect x="480" y="300" width="260" height="32" rx="10" fill="#4285F4"/>
+    <text x="610" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">🤖 Gemini（3）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="492" y="356">GEMINI_API_KEY</text>
+      <text x="492" y="374" font-size="9" fill="#94A3B8">🔒 Google AI Studio</text>
+
+      <text x="492" y="394">GEMINI_MODEL</text>
+      <text x="492" y="412" font-size="9" fill="#94A3B8">任意・未設定 = gemini-flash-latest</text>
+      <text x="492" y="424" font-size="9" fill="#B91C1C">⚠ バージョン固定は EOL 404 リスク</text>
+
+      <text x="492" y="446">GEMINI_MONTHLY_TOKEN_LIMIT</text>
+      <text x="492" y="464" font-size="9" fill="#94A3B8">80% で LINE アラート（default 1,000,000）</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="760" y="300" width="200" height="180" rx="10" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5"/>
+    <rect x="760" y="300" width="200" height="32" rx="10" fill="#0F172A"/>
+    <text x="860" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">🕒 Cron 保護（1）</text>
+
+    <g font-size="10" fill="#334155" font-family="'Menlo', monospace">
+      <text x="772" y="356">CRON_SECRET</text>
+      <text x="772" y="374" font-size="9" fill="#94A3B8">🔒 /api/cron/classify</text>
+      <text x="772" y="388" font-size="9" fill="#94A3B8">Bearer 認証</text>
+      <text x="772" y="410" font-size="9" fill="#B91C1C">Vercel + GitHub Secrets の</text>
+      <text x="772" y="422" font-size="9" fill="#B91C1C">両方に同値で設定</text>
+    </g>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="40" y="510" width="920" height="80" rx="10" fill="#FEF3F2" stroke="#DC2626" stroke-width="1.5"/>
+    <text x="500" y="536" text-anchor="middle" font-size="13" font-weight="700" fill="#B91C1C">⚠ 環境変数を触るときの絶対ルール</text>
+    <g font-size="10" fill="#334155" transform="translate(60 550)">
+      <text y="12">① Vercel env を追加/変更したら必ず `vercel --prod --yes` で Redeploy（ウォームコンテナが古い値を保持する落とし穴）</text>
+      <text y="26">② Windows で `.env.local` の値を CLI パイプする場合は `tr -d '\r\n'`（\n だけだと \r 残留で API 401）</text>
+      <text y="40">③ GMAIL_PUSH_SECRET と CRON_SECRET は 2 箇所（Vercel + 外部設定側）で 1 文字も違わずに一致させる（timingSafeEqual で厳密比較）</text>
+    </g>
+  </g>
+
+  <text x="980" y="608" text-anchor="end" font-size="9" fill="#94A3B8">docs/screenshots/env-vars-map.svg</text>
+</svg>

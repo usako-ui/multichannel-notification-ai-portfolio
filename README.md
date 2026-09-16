@@ -6,6 +6,17 @@
 **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
 **AI デモ体験（BYOK）：** 上記 URL からご自身の Gemini API キーで即体験可能
 
+<p align="center">
+  <img src="docs/screenshots/01-lp-hero.png" alt="LP Hero（PC）" height="400">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/02-lp-hero-mobile.png" alt="LP Hero（スマホ）" height="400">
+</p>
+<p align="center">
+  <sub>💻 PC 表示（1920×1035）｜📱 モバイル表示（Chrome DevTools・iPhone 14 Pro）</sub>
+</p>
+
+**モバイルファースト設計：** Tailwind CSS で `sm:` プレフィックスを 200+ 箇所使用し、スマホ実機でもレイアウトが崩れずに閲覧できることを目視確認済み。
+
 ---
 
 ## 📌 本ポートフォリオの前提について
@@ -38,6 +49,13 @@
 ---
 
 ## システムアーキテクチャ
+
+![システム全体構成図](docs/screenshots/system-architecture.svg)
+
+**主要コンポーネント：** LINE / Gmail の受信 → Vercel Functions（3 エンドポイント）→ Supabase キュー → Gemini 分類 → Slack 5 チャネル振り分け。緊急パスは Cron を経由せず handleUrgent で同期実行し、営業部長個人 LINE へ数秒で到達（実測 60 秒以内）。
+
+<details>
+<summary>Mermaid フローチャート（テキスト検索可能な等価図）</summary>
 
 ```mermaid
 flowchart LR
@@ -72,6 +90,8 @@ flowchart LR
     class Fast,LinePush,UrgentSlack urgentNode
     class AI,NormalSlack normalNode
 ```
+
+</details>
 
 **設計思想：**
 - **緊急パスは Cron を経由しない**（赤経路・Cron 遅延で SLA 5 分を超えるリスクを排除）

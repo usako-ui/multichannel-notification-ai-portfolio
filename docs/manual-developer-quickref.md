@@ -21,6 +21,8 @@
 
 **全 20 変数。** `NEXT_PUBLIC_` は Supabase の URL / ANON_KEY のみ・他は全てサーバー専用。
 
+![環境変数マップ（7 グループ × 20 変数を経路上に配置）](screenshots/env-vars-map.svg)
+
 ### 🔐 Supabase（3 件）
 
 | キー | 用途 | 取得先 | 公開範囲 |
@@ -82,6 +84,11 @@
 
 ## 3. トラブルシュート判断フロー
 
+![トラブルシュート判断フロー（SVG 版）](screenshots/troubleshoot-flowchart.svg)
+
+<details>
+<summary>Mermaid 版（テキスト検索可能）</summary>
+
 ```mermaid
 flowchart TD
     Start([問い合わせが Slack に届かない])
@@ -109,6 +116,8 @@ flowchart TD
     classDef fixNode fill:#fee5e5,stroke:#e53e3e
     class L1A,L2A,G1A,G2A,G2B,Slack1A,Slack2A,DefA fixNode
 ```
+
+</details>
 
 ### mermaid が読めない環境用の要約表
 

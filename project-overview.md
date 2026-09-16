@@ -85,6 +85,11 @@ Gemini API で 5 カテゴリに自動分類して担当チャネルへ振り分
 
 ## システム全体のデータフロー
 
+![データフロー詳細図](docs/screenshots/data-flow.svg)
+
+<details>
+<summary>ASCII 版（テキスト検索可能）</summary>
+
 ```
 LINE 公式 ────→ /api/webhooks/line（LINE 署名検証・HMAC-SHA256）
                     │
@@ -113,6 +118,8 @@ Gmail ─┬─────→ /api/webhooks/gmail-push（Pub/Sub Push・?token 
 補助経路：Cron 実行時に ensureGmailWatch() が Gmail Watch 期限をチェックし、
          残り 24h 以下で users.watch を自動再登録（Push を継続受信するため）。
 ```
+
+</details>
 
 ---
 

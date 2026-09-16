@@ -84,6 +84,11 @@ Gmail・LINE 公式に届いた問い合わせを Slack へ自動集約し、
 
 ## システムのデータフロー
 
+![システム全体構成図](docs/screenshots/system-architecture.svg)
+
+<details>
+<summary>Mermaid フローチャート（テキスト検索可能な等価図）</summary>
+
 ```mermaid
 flowchart LR
     Src["Gmail / LINE 公式"]
@@ -109,6 +114,8 @@ flowchart LR
     classDef urgent fill:#fee5e5,stroke:#e53e3e,color:#000
     class HU urgent
 ```
+
+</details>
 
 - **緊急パス（赤）：** handleUrgent は Cron を経由せず Webhook 内で同期実行。SLA 5 分厳守。
 - **通常パス：** Supabase pending → Cron → Gemini 分類 → Slack 投稿 → status=notified。
