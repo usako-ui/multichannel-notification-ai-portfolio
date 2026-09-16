@@ -12,6 +12,9 @@ tasks.md
 # 差分説明メモ（Git 管理外・別経路で共有）
 docs/change-log.md
 
+# Phase 2 継続提案書（クライアント個別配布用・LINE 等で共有・公開しない）
+docs/proposal-phase2.md
+
 # Next.js
 .next/
 out/
