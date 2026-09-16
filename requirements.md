@@ -25,6 +25,8 @@
 
 ## DB スキーマ
 
+![ERD（inquiry_queue + gemini_usage_monthly）](docs/screenshots/db-erd.svg)
+
 ```sql
 -- 受信した問い合わせのキュー
 CREATE TABLE inquiry_queue (

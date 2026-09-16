@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" font-family="'Inter', 'Hiragino Sans', system-ui, sans-serif">
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+    </marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#DC2626"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#059669"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="620" fill="#F8FAFC"/>
+
+  <text x="480" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A">データフロー｜緊急パス（赤）と通常パス（緑）</text>
+  <text x="480" y="54" text-anchor="middle" font-size="11" fill="#64748B">緊急パスは Cron 非経由で SLA 5 分厳守・通常パスは 5 分周期で Gemini 分類→Slack 投稿</text>
+
+  <g filter="url(#s)">
+    <rect x="60" y="90" width="120" height="60" rx="10" fill="#FFFFFF" stroke="#06C755"/>
+    <text x="120" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#06C755">LINE 公式</text>
+    <text x="120" y="136" text-anchor="middle" font-size="9" fill="#64748B">お客様のメッセージ</text>
+  </g>
+  <g filter="url(#s)">
+    <rect x="200" y="90" width="120" height="60" rx="10" fill="#FFFFFF" stroke="#EA4335"/>
+    <text x="260" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#EA4335">Gmail</text>
+    <text x="260" y="136" text-anchor="middle" font-size="9" fill="#64748B">ラベル自動付与</text>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="60" y="180" width="120" height="52" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="120" y="202" text-anchor="middle" font-size="11" font-weight="600" fill="#0F172A">署名検証</text>
+    <text x="120" y="218" text-anchor="middle" font-size="9" fill="#64748B">HMAC-SHA256</text>
+  </g>
+  <g filter="url(#s)">
+    <rect x="200" y="180" width="120" height="52" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="260" y="202" text-anchor="middle" font-size="11" font-weight="600" fill="#0F172A">Pub/Sub Push</text>
+    <text x="260" y="218" text-anchor="middle" font-size="9" fill="#64748B">?token= 検証</text>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="80" y="260" width="220" height="70" rx="10" fill="#FFFBEB" stroke="#F59E0B"/>
+    <text x="190" y="284" text-anchor="middle" font-size="12" font-weight="700" fill="#B45309">緊急判定 isUrgent()</text>
+    <text x="190" y="304" text-anchor="middle" font-size="9" fill="#78350F">URGENT_PATTERN で拾い</text>
+    <text x="190" y="318" text-anchor="middle" font-size="9" fill="#78350F">NEGATION_PATTERN で除外</text>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="40" y="380" width="300" height="150" rx="12" fill="#FEF3F2" stroke="#DC2626" stroke-width="1.5"/>
+    <text x="190" y="404" text-anchor="middle" font-size="13" font-weight="700" fill="#B91C1C">🚨 緊急パス（Cron 非経由）</text>
+    <text x="190" y="422" text-anchor="middle" font-size="9" fill="#B91C1C">Webhook / Push 内で同期実行・SLA 5 分厳守</text>
+
+    <rect x="56" y="434" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="190" y="452" text-anchor="middle" font-size="10" fill="#0F172A">① inquiry_queue INSERT（is_urgent=TRUE）</text>
+
+    <rect x="56" y="466" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="190" y="484" text-anchor="middle" font-size="10" fill="#0F172A">② Slack #クレーム緊急 🚨 投稿</text>
+
+    <rect x="56" y="498" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="190" y="516" text-anchor="middle" font-size="10" font-weight="600" fill="#B91C1C">③ 営業部長 個人 LINE Push</text>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="620" y="260" width="220" height="70" rx="10" fill="#ECFDF5" stroke="#059669"/>
+    <text x="730" y="284" text-anchor="middle" font-size="12" font-weight="700" fill="#065F46">通常判定（緊急ではない）</text>
+    <text x="730" y="304" text-anchor="middle" font-size="9" fill="#065F46">inquiry_queue に</text>
+    <text x="730" y="318" text-anchor="middle" font-size="9" fill="#065F46">status=&#39;pending&#39; で INSERT</text>
+  </g>
+
+  <g filter="url(#s)">
+    <rect x="620" y="380" width="300" height="150" rx="12" fill="#ECFDF5" stroke="#059669" stroke-width="1.5"/>
+    <text x="770" y="404" text-anchor="middle" font-size="13" font-weight="700" fill="#065F46">🕒 通常パス（Cron 経由）</text>
+    <text x="770" y="422" text-anchor="middle" font-size="9" fill="#065F46">GitHub Actions Cron 5 分毎 + 手動発火</text>
+
+    <rect x="636" y="434" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="770" y="452" text-anchor="middle" font-size="10" fill="#0F172A">① 最大 20 件を pending から取得</text>
+
+    <rect x="636" y="466" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="770" y="484" text-anchor="middle" font-size="10" fill="#0F172A">② Gemini で 5 カテゴリに分類</text>
+
+    <rect x="636" y="498" width="268" height="26" rx="4" fill="#FFFFFF"/>
+    <text x="770" y="516" text-anchor="middle" font-size="10" fill="#0F172A">③ Slack 該当チャネル投稿→notified</text>
+  </g>
+
+  <g stroke="#475569" stroke-width="1.5" fill="none">
+    <path d="M 120 150 L 120 180" marker-end="url(#arr)"/>
+    <path d="M 260 150 L 260 180" marker-end="url(#arr)"/>
+    <path d="M 120 232 L 160 260" marker-end="url(#arr)"/>
+    <path d="M 260 232 L 220 260" marker-end="url(#arr)"/>
+  </g>
+
+  <g stroke="#DC2626" stroke-width="1.8" fill="none">
+    <path d="M 190 330 L 190 380" marker-end="url(#arr-red)"/>
+  </g>
+
+  <g stroke="#059669" stroke-width="1.8" fill="none">
+    <path d="M 300 295 L 620 295" marker-end="url(#arr-green)"/>
+    <path d="M 770 330 L 770 380" marker-end="url(#arr-green)"/>
+  </g>
+
+  <g font-size="9" fill="#64748B">
+    <text x="200" y="356" font-weight="700" fill="#B91C1C">✅ 緊急キーワード検出</text>
+    <text x="380" y="286" font-weight="600" fill="#065F46">✅ 通常メッセージ</text>
+  </g>
+
+  <g transform="translate(60 560)" font-size="10" fill="#334155">
+    <rect x="0" y="0" width="12" height="12" rx="2" fill="#DC2626"/>
+    <text x="20" y="10">緊急パス（Cron 非経由・数秒〜60 秒到達）</text>
+
+    <rect x="280" y="0" width="12" height="12" rx="2" fill="#059669"/>
+    <text x="300" y="10">通常パス（Cron 経由・5 分周期）</text>
+
+    <text x="560" y="10" fill="#64748B">💡 external_id UNIQUE で重複配信を吸収（Webhook / Push リトライ対応）</text>
+  </g>
+
+  <text x="940" y="608" text-anchor="end" font-size="9" fill="#94A3B8">docs/screenshots/data-flow.svg</text>
+</svg>

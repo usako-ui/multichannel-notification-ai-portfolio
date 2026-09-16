@@ -39,6 +39,13 @@
 
 ## システムアーキテクチャ
 
+![システム全体構成図](docs/screenshots/system-architecture.svg)
+
+**主要コンポーネント：** LINE / Gmail の受信 → Vercel Functions（3 エンドポイント）→ Supabase キュー → Gemini 分類 → Slack 5 チャネル振り分け。緊急パスは Cron を経由せず handleUrgent で同期実行し、営業部長個人 LINE へ数秒で到達（実測 60 秒以内）。
+
+<details>
+<summary>Mermaid フローチャート（テキスト検索可能な等価図）</summary>
+
 ```mermaid
 flowchart LR
     Customer((お客様))
@@ -72,6 +79,8 @@ flowchart LR
     class Fast,LinePush,UrgentSlack urgentNode
     class AI,NormalSlack normalNode
 ```
+
+</details>
 
 **設計思想：**
 - **緊急パスは Cron を経由しない**（赤経路・Cron 遅延で SLA 5 分を超えるリスクを排除）
