@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" font-family="'Inter', 'Hiragino Sans', system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 660" font-family="'Inter', 'Hiragino Sans', system-ui, sans-serif">
   <defs>
     <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.10"/>
     </filter>
   </defs>
 
-  <rect width="1000" height="620" fill="#F8FAFC"/>
+  <rect width="1000" height="660" fill="#F8FAFC"/>
 
   <text x="500" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A">環境変数マップ｜全 20 変数を経路上に配置</text>
   <text x="500" y="54" text-anchor="middle" font-size="11" fill="#64748B">NEXT_PUBLIC_ プレフィックスは Supabase URL / ANON_KEY のみ・他は全てサーバー専用</text>
@@ -137,14 +137,14 @@
   </g>
 
   <g filter="url(#s)">
-    <rect x="40" y="510" width="920" height="80" rx="10" fill="#FEF3F2" stroke="#DC2626" stroke-width="1.5"/>
+    <rect x="40" y="510" width="920" height="120" rx="10" fill="#FEF3F2" stroke="#DC2626" stroke-width="1.5"/>
     <text x="500" y="536" text-anchor="middle" font-size="13" font-weight="700" fill="#B91C1C">⚠ 環境変数を触るときの絶対ルール</text>
-    <g font-size="10" fill="#334155" transform="translate(60 550)">
-      <text y="12">① Vercel env を追加/変更したら必ず `vercel --prod --yes` で Redeploy（ウォームコンテナが古い値を保持する落とし穴）</text>
-      <text y="26">② Windows で `.env.local` の値を CLI パイプする場合は `tr -d '\r\n'`（\n だけだと \r 残留で API 401）</text>
-      <text y="40">③ GMAIL_PUSH_SECRET と CRON_SECRET は 2 箇所（Vercel + 外部設定側）で 1 文字も違わずに一致させる（timingSafeEqual で厳密比較）</text>
+    <g font-size="10" fill="#334155" transform="translate(60 556)">
+      <text y="0">① Vercel env を追加/変更したら必ず `vercel --prod --yes` で Redeploy（ウォームコンテナが古い値を保持する落とし穴）</text>
+      <text y="22">② Windows で `.env.local` の値を CLI パイプする場合は `tr -d '\r\n'`（\n だけだと \r 残留で API 401）</text>
+      <text y="44">③ GMAIL_PUSH_SECRET と CRON_SECRET は 2 箇所（Vercel + 外部設定側）で 1 文字も違わずに一致させる（timingSafeEqual で厳密比較）</text>
     </g>
   </g>
 
-  <text x="980" y="608" text-anchor="end" font-size="9" fill="#94A3B8">docs/screenshots/env-vars-map.svg</text>
+  <text x="980" y="650" text-anchor="end" font-size="9" fill="#94A3B8">docs/screenshots/env-vars-map.svg</text>
 </svg>
