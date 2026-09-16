@@ -1,17 +1,18 @@
-# 開発者向け手順書
+# 開発者向け手順書（詳細版）
 
-# マルチチャネル通知システム｜manual-developer.md
+このシステムを引き継いだ開発者・運用担当者向けのリファレンスです。セットアップ・デプロイ・環境変数・トラブルシューティング・API キーローテーションまで一箇所に集約しています。
 
-> **対象読者：** このシステムを引き継いだ開発者・運用担当者
-> **最終更新：** 2026-09-16（PR #7-9 Pub/Sub Push・QA 消化・AGENTS 拡充を反映）
-> **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
-> **リポジトリ：** https://github.com/usako-ui/multichannel-notification-ai-portfolio
->
-> **本番リリース時に判明した実運用ポイントは「8. トラブルシューティング」に集約しています。**
-> **AI エージェント向けの「触ると壊れる箇所」は `AGENTS.md` を参照してください（本ドキュメント section 10 から誘導）。**
+- **最終更新**：2026-09-16（PR #7-9 Pub/Sub Push / QA 消化 / AGENTS 拡充を反映）
+- **本番 URL**：<https://multichannel-notification-ai-dev.vercel.app/>
+- **リポジトリ**：<https://github.com/usako-ui/multichannel-notification-ai-portfolio>
 
-> ⚡ **急いでいる場合：** [`manual-developer-quickref.md`](./manual-developer-quickref.md) を先に見てください。
-> エンドポイント対応表・環境変数マトリクス・トラブルシュート判断フロー（mermaid）・デプロイ前チェックリストを 1 枚に凝縮した QuickRef です。本ドキュメントは詳細手順・OAuth フロー・実行コマンド例のリファレンスとして併用してください。
+⚡ **急いでいる場合**：[`manual-developer-quickref.md`](./manual-developer-quickref.md) を先に見てください
+　　（エンドポイント対応表・環境変数マトリクス・トラブル判断フロー・デプロイ前チェックリストを 1 枚に凝縮）
+
+🔒 **触ると壊れる箇所**：本書 section 10 経由で [`../AGENTS.md`](../AGENTS.md) を必読
+　　（10 項目・設計判断の根拠と NG パターン）
+
+📚 **リポジトリのドキュメント一覧**：[`../README.md#ドキュメント一覧`](../README.md#ドキュメント一覧)
 
 ---
 

@@ -15,6 +15,9 @@ docs/change-log.md
 # Phase 2 継続提案書（クライアント個別配布用・LINE 等で共有・公開しない）
 docs/proposal-phase2.md
 
+# 講座提供のテスト CSV（納品成果物ではないためリポジトリに含めない・ローカル参照のみ）
+docs/case5-test-inquiries.csv
+
 # Next.js
 .next/
 out/

@@ -1,15 +1,18 @@
-# AGENTS.md
+# AGENTS.md｜引き継いだ AI が最初に読む 1 枚
 
-AI コーディングエージェント向けの作業ルールです。人が読む資料は
-[`docs/manual-operator.md`](docs/manual-operator.md)（運用マニュアル）と
-[`docs/manual-developer.md`](docs/manual-developer.md)（開発者向け手順書）にあります。
+AI コーディングエージェント向けの作業ルール・設計判断集です。「触ると壊れる箇所」を 10 項目にまとめています。
 
-このファイルは **「引き継いだ AI が最初に読む 1 枚」** として置いています。
-Claude Code の場合は、起動後に次のように指示すれば読み込めます。
+**人が読む資料**：
+- [`docs/manual-operator.md`](docs/manual-operator.md)（運用マニュアル・詳細版）
+- [`docs/manual-developer.md`](docs/manual-developer.md)（開発者向け手順書・詳細版）
+- [`docs/manual-developer-quickref.md`](docs/manual-developer-quickref.md)（開発者 QuickRef）
 
+**Claude Code 起動時の指示例**：
 ```
 AGENTS.md と docs/manual-developer.md を読んで、現状を把握してから作業してください。
 ```
+
+📚 **リポジトリのドキュメント一覧**：[`README.md#ドキュメント一覧`](README.md#ドキュメント一覧)
 
 ---
 
@@ -42,7 +45,7 @@ Gmail・LINE 公式に届いた問い合わせを Slack へ自動集約し、
 |---|---|
 | まず動かす・全体像をつかむ | `docs/manual-developer.md` |
 | 機能要件・DB スキーマ・受入条件 | `requirements.md` |
-| AI 分類の検証シナリオと期待値 | `docs/case5-test-inquiries.csv`（テスト 22 件） |
+| AI 分類の検証シナリオと期待値 | `docs/case5-test-inquiries.csv`（テスト 22 件・**講座提供のため Git 管理外**・引き継ぎ時は別途受領） |
 | 環境変数の一覧 | `.env.example`（キー名）+ `docs/manual-developer.md`（用途・取得先） |
 
 **⚠️ 本ファイル下部の「触ると壊れる箇所」は変更前に必ず読むこと。**
@@ -406,7 +409,7 @@ export function isUrgent(content: string): boolean {
 - 「緊急」単体は URGENT_PATTERN に **含めない**（「これは緊急ではありません」を通常パスに流すため・NEGATION で除外しきれないので）
 
 **触るときの必須手順：**
-- `URGENT_PATTERN` / `NEGATION_PATTERN` を変更したら **CSV テスト 22 件（`docs/case5-test-inquiries.csv`）で回帰確認必須**
+- `URGENT_PATTERN` / `NEGATION_PATTERN` を変更したら **CSV テスト 22 件（`docs/case5-test-inquiries.csv`・講座提供のため Git 管理外）で回帰確認必須**
 - 特に境界例：No.19（クレーム系）・No.20（クレーム系）・No.21（無関係な話題）・No.22（「これは緊急ではありません」＝通常パス期待）
 - CSV でテストできない新パターンを想定する場合は仮想テストケースを `node -e` で書き足してから変更する
 
