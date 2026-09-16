@@ -6,18 +6,14 @@
 **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
 **AI デモ体験（BYOK）：** 上記 URL からご自身の Gemini API キーで即体験可能
 
-<table>
-  <tr>
-    <td align="center" width="70%">
-      <img src="docs/screenshots/01-lp-hero.png" alt="LP Hero（PC）" width="100%"><br>
-      <sub>💻 PC 表示（1920×1035）</sub>
-    </td>
-    <td align="center" width="30%">
-      <img src="docs/screenshots/02-lp-hero-mobile.png" alt="LP Hero（スマホ）" width="100%"><br>
-      <sub>📱 モバイル表示（Chrome DevTools）</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/screenshots/01-lp-hero.png" alt="LP Hero（PC）" height="400">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/02-lp-hero-mobile.png" alt="LP Hero（スマホ）" height="400">
+</p>
+<p align="center">
+  <sub>💻 PC 表示（1920×1035）｜📱 モバイル表示（Chrome DevTools・iPhone 14 Pro）</sub>
+</p>
 
 **モバイルファースト設計：** Tailwind CSS で `sm:` プレフィックスを 200+ 箇所使用し、スマホ実機でもレイアウトが崩れずに閲覧できることを目視確認済み。
 
