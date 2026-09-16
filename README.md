@@ -4,7 +4,7 @@
 > Gemini で 5 カテゴリに自動分類。クレームは営業部長の個人 LINE に **5 分以内**で通知します。
 
 **本番 URL：** https://multichannel-notification-ai-dev.vercel.app/
-**AI デモ体験（BYOK）：** 上記 URL からご自身の Gemini API キーで即体験可能
+>**AI デモ体験（BYOK）：** 上記 URL からご自身の Gemini API キーで即体験可能
 
 <table>
   <tr>
