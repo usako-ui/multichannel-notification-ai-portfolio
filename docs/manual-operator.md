@@ -13,6 +13,14 @@
 
 ![Slack 5 チャネル画面イメージ](screenshots/slack-channels-mockup.svg)
 
+**実際の Slack 画面（本番稼働中）：**
+
+<p align="center">
+  <img src="screenshots/03-slack-real-channels.png" alt="本番 Slack 実画面" width="900">
+</p>
+
+> 実運用中の Slack ワークスペースのスクリーンショット。5 つのチャネルが自動で振り分けられ、各投稿の先頭に「送信元・送信者」ヘッダが付いていることが確認できます。
+
 | チャネル | 何が来るか |
 |---|---|
 | `#賃貸` | 賃貸物件の問い合わせ |
@@ -33,6 +41,14 @@
 - 通知の先頭には **🚨 マーク**が付きます
 
 ![緊急通知イメージ（LINE Push 通知の見方）](screenshots/line-push-mockup.svg)
+
+**実際のスマホ受信画面（本番稼働中）：**
+
+<p align="center">
+  <img src="screenshots/03-line-push-real.png" alt="本番 LINE Push 実受信画面" width="380">
+</p>
+
+> クレームキーワード（「至急」「苦情」等）を含むメッセージを送信すると、営業部長の個人 LINE に **数十秒〜1 分以内** に届きます。SLA 5 分目標に対して大幅に余裕を持って達成できていることが分かります。
 
 ---
 

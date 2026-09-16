@@ -22,19 +22,25 @@
 
 ---
 
-## 🔴 実機撮影が必要な PNG（必須 3 枚のみ）
+## ✅ 実機撮影済み PNG（4 枚・2026-09-16 撮影・埋め込み済み）
 
-**なぜ 3 枚だけか：** ポートフォリオとしての視覚的訴求と、SLA 達成の裏付けに必要な最小限。設定画面や dashboard 系は SVG モック + 文字説明で代替可能なので撮影対象から外した。
-
-### 撮影対象（合計 3 枚・作業時間 目安 10 分）
-
-| # | ファイル名 | 撮影対象 | 埋め込み先 | 撮影のコツ |
+| # | ファイル名 | 撮影対象 | サイズ | 埋め込み先 |
 |---|---|---|---|---|
-| 01 | `01-lp-hero.png` | 本番 LP の Hero セクション（PC）| `../../README.md`（トップ画像）| Chrome PC で https://multichannel-notification-ai-dev.vercel.app/ を開き、Hero セクション（1st view）をキャプチャ |
-| 02 | `02-lp-hero-mobile.png` | 本番 LP の Hero セクション（スマホ）| `../../README.md`（レスポンシブ実証）| ①の後に Chrome DevTools でモバイル表示（iPhone 14 Pro 等）に切り替え → 同じ Hero をキャプチャ・**PC 撮影と同じセッションで完結** |
-| 03 | `03-line-push-real.png` **OR** `03-slack-real-channels.png` | クレーム LINE Push 実受信 **OR** Slack `#クレーム緊急` 実投稿 | `../manual-operator.md`（緊急通知節・裏付け）| どちらか撮りやすい方 1 枚だけで OK。LINE Push はスマホの通知センター画面が伝わりやすい |
+| 01 | `01-lp-hero.png` | 本番 LP Hero（PC）| 1920×1035 | `../../README.md`（トップ横並び左）|
+| 02 | `02-lp-hero-mobile.png` | 本番 LP Hero（スマホ・Chrome DevTools）| 828×1451 | `../../README.md`（トップ横並び右）|
+| 03a | `03-slack-real-channels.png` | Slack 実チャネル画面 | 1483×160 | `../manual-operator.md`（普段の確認節・SVG モックの下）|
+| 03b | `03-line-push-real.png` | 本番 LINE Push 実受信 | 828×481 | `../manual-operator.md`（緊急通知節・SVG モックの下）|
 
-**マスキング必須項目：** 個人名・メールアドレス・User ID・API キー・チャネル ID・実 URL 等（Misa さんが編集）
+**マスキング済み想定：** 個人名・メールアドレス・User ID・API キー・チャネル ID・実 URL 等（Misa さんが編集済み）
+
+### 埋め込みのサイズ設計
+
+| ファイル | Markdown 内での width | 理由 |
+|---|---|---|
+| 01-lp-hero | `width="100%"`（テーブル左 70%）| PC 画面らしい横長を活かす |
+| 02-lp-hero-mobile | `width="100%"`（テーブル右 30%）| PC と並べて「レスポンシブ」を一目で訴求 |
+| 03-slack-real-channels | `width="900"` | Slack 画面の横長を活かす |
+| 03-line-push-real | `width="380"` | スマホ通知らしいサイズ感 |
 
 ---
 
