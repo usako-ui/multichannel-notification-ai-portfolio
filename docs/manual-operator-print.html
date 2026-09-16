@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マルチチャネル通知システム｜運用マニュアル（A4・1枚版）</title>
+<style>
+  :root{
+    --primary:#173f5f;
+    --secondary:#2f7d73;
+    --accent:#dcefeb;
+    --soft:#f6f8f9;
+    --warn:#fff5df;
+    --warn-line:#d39a2c;
+    --text:#24323a;
+    --line:#cfd9de;
+  }
+
+  *{
+    box-sizing:border-box;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+
+  html,body{margin:0;padding:0;}
+
+  body{
+    font-family:"Yu Gothic","Meiryo","Hiragino Kaku Gothic ProN",sans-serif;
+    color:var(--text);
+    background:#e9edf0;
+    font-size:9.2pt;
+    line-height:1.38;
+  }
+
+  .sheet{
+    width:210mm;
+    min-height:297mm;
+    margin:10mm auto;
+    padding:11mm 13mm 9mm;
+    background:#fff;
+    box-shadow:0 2px 12px rgba(0,0,0,.16);
+  }
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:8mm;
+    border-bottom:2.5pt solid var(--primary);
+    padding-bottom:2.5mm;
+    margin-bottom:3.5mm;
+  }
+
+  h1{
+    margin:0;
+    font-size:17pt;
+    line-height:1.2;
+    letter-spacing:.02em;
+    color:var(--primary);
+  }
+
+  .sub{
+    margin:1mm 0 0;
+    font-size:8.7pt;
+    color:var(--secondary);
+  }
+
+  .badge{
+    flex:0 0 auto;
+    border:1pt solid var(--secondary);
+    color:var(--secondary);
+    border-radius:999px;
+    padding:1mm 3mm;
+    font-size:8pt;
+    font-weight:bold;
+    white-space:nowrap;
+  }
+
+  section{margin-bottom:2.7mm;}
+
+  h2{
+    margin:0 0 1.5mm;
+    padding:1mm 2.5mm;
+    background:var(--primary);
+    color:#fff;
+    border-radius:1mm;
+    font-size:10.2pt;
+    line-height:1.25;
+  }
+
+  .lead{
+    margin:0 0 1.5mm;
+    font-weight:500;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-size:8.45pt;
+  }
+
+  th,td{
+    border:.55pt solid var(--line);
+    padding:1.25mm 1.8mm;
+    vertical-align:middle;
+  }
+
+  th{
+    background:var(--soft);
+    color:var(--primary);
+    font-weight:bold;
+    text-align:left;
+  }
+
+  th:nth-child(1){width:24%;}
+  th:nth-child(2){width:43%;}
+  th:nth-child(3){width:33%;}
+
+  code{
+    font-family:Consolas,"Yu Gothic",monospace;
+    font-size:.96em;
+    background:#eef2f4;
+    padding:.1mm .7mm;
+    border-radius:.7mm;
+  }
+
+  .note{
+    margin:1.4mm 0 0;
+    padding:1.6mm 2.5mm;
+    background:var(--soft);
+    border-left:2.2mm solid var(--secondary);
+    border-radius:1mm;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:3mm;
+  }
+
+  .box{
+    border:.6pt solid var(--line);
+    border-radius:1.2mm;
+    padding:2mm 2.5mm;
+  }
+
+  .box h3{
+    margin:0 0 1mm;
+    color:var(--primary);
+    font-size:9.2pt;
+  }
+
+  ul,ol{
+    margin:0;
+    padding-left:5mm;
+  }
+
+  li{margin:.45mm 0;}
+
+  .urgent{
+    background:#fff0ed;
+    border-left:2.5mm solid #b84a3a;
+  }
+
+  .urgent h3{color:#9d3428;}
+
+  .warning{
+    margin-top:1.3mm;
+    background:var(--warn);
+    border-left:2.5mm solid var(--warn-line);
+    border-radius:1mm;
+    padding:1.5mm 2.5mm;
+  }
+
+  .three{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:2.5mm;
+    counter-reset:item;
+  }
+
+  .step{
+    position:relative;
+    padding:1.5mm 2mm 1.5mm 7mm;
+    border:.6pt solid var(--line);
+    border-radius:1mm;
+    background:#fff;
+    min-height:12mm;
+  }
+
+  .step::before{
+    content:counter(item);
+    counter-increment:item;
+    position:absolute;
+    left:2mm;
+    top:2mm;
+    width:4mm;
+    height:4mm;
+    line-height:4mm;
+    text-align:center;
+    border-radius:50%;
+    background:var(--secondary);
+    color:#fff;
+    font-size:7.5pt;
+    font-weight:bold;
+  }
+
+  .rules{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:2.5mm;
+  }
+
+  .rule{
+    border:.6pt solid var(--line);
+    border-radius:1mm;
+    padding:1.7mm 2.2mm;
+    font-size:8.45pt;
+  }
+
+  .rule strong{color:var(--primary);}
+
+  .footer{
+    margin-top:2.5mm;
+    padding-top:1.8mm;
+    border-top:.7pt solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    gap:5mm;
+    font-size:7.3pt;
+    color:#66767e;
+  }
+
+  .small{font-size:8pt;color:#66767e;}
+
+  @page{
+    size:A4 portrait;
+    margin:10mm;
+  }
+
+  @media print{
+    body{background:#fff;font-size:9.2pt;}
+    .sheet{
+      width:auto;
+      min-height:0;
+      margin:0;
+      padding:0;
+      box-shadow:none;
+    }
+    section,.box,.step,.rule{break-inside:avoid;}
+    h2{break-after:avoid;}
+    .screen-tip{display:none;}
+  }
+
+  @media screen{
+    .screen-tip{
+      position:fixed;
+      top:8px;
+      right:8px;
+      background:#173f5f;
+      color:#fff;
+      padding:7px 11px;
+      border-radius:6px;
+      font-size:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.2);
+    }
+  }
+</style>
+</head>
+
+<body>
+<div class="screen-tip">印刷：Ctrl + P → A4・縦 → 1ページ</div>
+
+<main class="sheet">
+<header>
+  <div>
+    <h1>マルチチャネル通知システム</h1>
+    <p class="sub">運用マニュアル｜営業部長・現場スタッフ向け</p>
+  </div>
+  <div class="badge">A4・1枚版</div>
+</header>
+
+<section>
+  <h2>1．毎日の確認：Slackの5チャネルを開くだけ</h2>
+  <p class="lead">問い合わせは内容に応じて、以下のチャネルへ自動振り分けされます。</p>
+  <table>
+    <thead>
+      <tr><th>チャネル</th><th>何が来るか</th><th>対応目安</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>#賃貸</code></td><td>賃貸物件の問い合わせ</td><td>当日～翌営業日</td></tr>
+      <tr><td><code>#売買</code></td><td>売買物件の問い合わせ</td><td>当日～翌営業日</td></tr>
+      <tr><td><code>#内見</code></td><td>内見希望</td><td>当日中に日程調整</td></tr>
+      <tr><td><code>#クレーム緊急</code></td><td>クレーム（🚨マーク付き）</td><td><strong>5分以内に確認・当日中に対応</strong></td></tr>
+      <tr><td><code>#要確認</code></td><td>AIが判断できなかったもの</td><td>目視で確認</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><strong>投稿の見方：</strong>1行目に「送信元：LINE/Gmail｜送信者：～さん」が表示され、問い合わせ元を確認できます。</div>
+</section>
+
+<section>
+  <h2>2．緊急通知（クレーム）</h2>
+  <div class="grid">
+    <div class="box urgent">
+      <h3>🚨 クレームを検知した場合</h3>
+      <ul>
+        <li><strong>営業部長の個人LINEへ自動通知</strong></li>
+        <li>Slack <code>#クレーム緊急</code> にも同時投稿</li>
+        <li>現場スタッフも同じ内容を確認できます</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>対応時間の目安</h3>
+      <ul>
+        <li><strong>目標：5分以内</strong></li>
+        <li>本課題での実測：1分未満</li>
+        <li>🚨が付いた通知は優先して確認してください</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3．5分待っても通知が来ないとき</h2>
+  <div class="three">
+    <div class="step"><strong>Slackの通知設定</strong><br>ミュート・通知オフを確認</div>
+    <div class="step"><strong>LINE公式アカウント</strong><br>通知設定（ミュート）を確認</div>
+    <div class="step"><strong>開発担当へ連絡</strong><br>①②で改善しなければ連絡</div>
+  </div>
+  <div class="warning"><strong>開発担当へ伝える3情報：</strong>①いつから通知が来ないか（例：今朝9時から）　②最後に届いた通知の時刻　③送信したメール・LINEの内容（件名・送信者）</div>
+</section>
+
+<section>
+  <h2>4．カテゴリ判定ルール（補足）</h2>
+  <div class="rules">
+    <div class="rule"><strong>クレーム</strong><br>「クレーム」「苦情」「至急」「緊急対応」「怒り」等を検出。<strong>迷ったらクレーム扱い</strong>。「クレームではありません」等の否定形は自動除外。</div>
+    <div class="rule"><strong>賃貸 / 売買 / 内見</strong><br>AI（Gemini）が本文から自動判定します。</div>
+    <div class="rule"><strong>要確認・その他</strong><br>上記に当てはまらない、迷惑メール、判断困難なもの。</div>
+  </div>
+</section>
+
+<div class="footer">
+  <span>詳細版：<code>docs/manual-operator.md</code></span>
+  <span>開発担当向け：<code>docs/manual-developer.md</code>（§7監視SQL・§8トラブルシューティング）</span>
+</div>
+</main>
+</body>
+</html>
