@@ -292,8 +292,8 @@ npx next build
 ## 開発者
 
 - **usako-ui**
-- ポートフォリオ：https://misako-profile-portfolio.vercel.app/
-- 業務相談（LINE 公式）：https://line.me/R/ti/p/@745jejoa
+- [ポートフォリオ](https://misako-profile-portfolio.vercel.app/)
+- [業務相談（LINE 公式）](https://line.me/R/ti/p/@745jejoa)
 
 **AI 駆動開発の実践：**
 本プロジェクトは Claude Code をメインの開発パートナーとして、設計〜実装〜レビュー〜デプロイまで一貫した AI 駆動開発で構築しました。
@@ -308,4 +308,4 @@ npx next build
 **許可：** コードの閲覧・参照・学習目的での利用
 **禁止：** 商用利用・無断複製/再配布・本コードをベースにした製品/サービス開発
 
-商用利用・導入検討・コラボレーションについては、[ポートフォリオサイト](https://misako-profile-portfolio.vercel.app/) または [LINE 公式アカウント](https://line.me/R/ti/p/@745jejoa) までご相談ください。
+商用利用・導入検討・コラボレーションについては、 [LINE 公式アカウント](https://line.me/R/ti/p/@745jejoa) までご相談ください。
