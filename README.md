@@ -10,11 +10,11 @@
   <tr>
     <td align="center" valign="middle">
       <img src="docs/screenshots/01-lp-hero.png" alt="LP Hero（PC）" height="280"><br>
-      <sub>💻 <b>PC 表示</b>（1920×1035）</sub>
+      <sub> <b>PC 表示</b>（1920×1035）</sub>
     </td>
     <td align="center" valign="middle">
       <img src="docs/screenshots/02-lp-hero-mobile.png" alt="LP Hero（スマホ）" height="280"><br>
-      <sub>📱 <b>モバイル表示</b>（iPhone 14 Pro）</sub>
+      <sub> <b>モバイル表示</b>（iPhone 14 Pro）</sub>
     </td>
   </tr>
 </table>
