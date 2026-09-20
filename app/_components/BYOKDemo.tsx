@@ -68,6 +68,20 @@ const CLASSIFY_PROMPT = `以下の問い合わせを、下記5カテゴリのい
 問い合わせ本文：
 `;
 
+// モデルフォールバック順序。
+// gemini-flash-latest（エイリアス）は最新モデルへ流れるため需要ピーク時に混みやすく、
+// 503 (UNAVAILABLE) を返しやすい。バージョン固定モデルの方が空いていることが多い。
+// 上から順に試し、503/429/5xx で失敗したら次モデルへフォールバックする。
+const MODEL_FALLBACKS = [
+  "gemini-flash-latest",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+] as const;
+
+// 各モデルで 5xx / 429 が出たときの再試行待ち時間（ミリ秒）。
+// 短すぎると Google 側の負荷解消前に再試行してしまい、長すぎるとデモの体感速度が悪化する。
+const RETRY_DELAY_MS = 800;
+
 function normalizeCategory(raw: string): Category {
   const trimmed = raw.trim();
   const candidates: Category[] = [
@@ -83,10 +97,111 @@ function normalizeCategory(raw: string): Category {
   return "要確認・その他";
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * HTTP ステータスコードから、ユーザー向けの日本語エラーメッセージを組み立てる。
+ * Google からの生 JSON をそのまま出すとデモとして体験が悪くなるため、原因別に整形する。
+ */
+function friendlyErrorMessage(status: number): string {
+  if (status === 401 || status === 403) {
+    return "API キーが無効か権限がありません。Google AI Studio で API キーを発行し直してください。";
+  }
+  if (status === 400) {
+    return "リクエスト内容が不正でした。問い合わせ本文を短くしてもう一度お試しください。";
+  }
+  if (status === 429) {
+    return "短時間に多くのリクエストが送信されました。1 分ほど待ってから再度お試しください。";
+  }
+  if (status === 503) {
+    return "Gemini API が一時的に混雑しています。少し待ってから『AI で分類する』を再度クリックしてください。";
+  }
+  if (status >= 500) {
+    return `Gemini API サーバーに一時的な障害が発生しています（HTTP ${status}）。少し待ってから再度お試しください。`;
+  }
+  return `予期しないエラーが発生しました（HTTP ${status}）。もう一度お試しください。`;
+}
+
+// permanent = リトライや別モデルへのフォールバックでも解消しないエラー。
+// キー無効 (401/403) や不正リクエスト (400) がこれに該当し、即ユーザーへ返す。
+function isPermanentError(status: number): boolean {
+  return status === 400 || status === 401 || status === 403;
+}
+
+async function callGemini(
+  model: string,
+  apiKey: string,
+  inquiry: string,
+): Promise<Response> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `${CLASSIFY_PROMPT}${inquiry}` }] }],
+      generationConfig: { temperature: 0 },
+    }),
+  });
+}
+
+/**
+ * モデルフォールバック + リトライを組み合わせた分類ロジック。
+ *
+ * 各モデルに対して最大 2 回試行する（初回 + RETRY_DELAY_MS 後に 1 リトライ）。
+ * 2 回とも 5xx/429 なら次モデルへフォールバックする。
+ * 401/403/400 が返った時点で即座に永続エラーとして throw（他モデルでも解消しないため）。
+ *
+ * 全モデルの全試行が失敗した場合は最後に受け取ったステータスに基づいた
+ * 日本語メッセージで Error を throw する。
+ */
+async function classifyWithFallback(
+  apiKey: string,
+  inquiry: string,
+): Promise<{ category: Category; modelUsed: string }> {
+  let lastStatus = 0;
+
+  for (const model of MODEL_FALLBACKS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await callGemini(model, apiKey, inquiry);
+
+      if (res.ok) {
+        const data = (await res.json()) as {
+          candidates?: { content?: { parts?: { text?: string }[] } }[];
+        };
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        if (!rawText) {
+          throw new Error(
+            "Gemini から空の応答が返りました。もう一度お試しください。",
+          );
+        }
+        return { category: normalizeCategory(rawText), modelUsed: model };
+      }
+
+      lastStatus = res.status;
+
+      // permanent エラー（キー無効・不正リクエスト）は他モデルでも解消しない
+      if (isPermanentError(res.status)) {
+        throw new Error(friendlyErrorMessage(res.status));
+      }
+
+      // transient エラーなら 1 回だけ同じモデルでリトライしてから次モデルへ
+      if (attempt === 0) {
+        await sleep(RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  throw new Error(friendlyErrorMessage(lastStatus));
+}
+
 export default function BYOKDemo(): JSX.Element {
   const [apiKey, setApiKey] = useState("");
   const [inquiry, setInquiry] = useState(SAMPLE_PROMPTS[0].text);
   const [result, setResult] = useState<Category | null>(null);
+  // 実際に応答したモデル名。フォールバックが働いたことをユーザーに可視化する。
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +209,7 @@ export default function BYOKDemo(): JSX.Element {
     e.preventDefault();
     setError(null);
     setResult(null);
+    setModelUsed(null);
 
     if (!apiKey.trim()) {
       setError("Gemini API キーを入力してください");
@@ -106,38 +222,16 @@ export default function BYOKDemo(): JSX.Element {
 
     setLoading(true);
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: `${CLASSIFY_PROMPT}${inquiry}` }],
-            },
-          ],
-          generationConfig: { temperature: 0 },
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(
-          `Gemini API エラー（HTTP ${res.status}）: ${errText.slice(0, 200)}`,
-        );
-      }
-
-      const data = (await res.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (!rawText) {
-        throw new Error("Gemini から空の応答が返りました");
-      }
-
-      setResult(normalizeCategory(rawText));
+      const { category, modelUsed: usedModel } = await classifyWithFallback(
+        apiKey,
+        inquiry,
+      );
+      setResult(category);
+      setModelUsed(usedModel);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "予期しないエラーが発生しました");
+      setError(
+        err instanceof Error ? err.message : "予期しないエラーが発生しました",
+      );
     } finally {
       setLoading(false);
     }
@@ -146,6 +240,7 @@ export default function BYOKDemo(): JSX.Element {
   function applySample(text: string): void {
     setInquiry(text);
     setResult(null);
+    setModelUsed(null);
     setError(null);
   }
 
@@ -255,9 +350,16 @@ export default function BYOKDemo(): JSX.Element {
 
       {result && (
         <div className="mt-6 space-y-3 rounded-xl border border-brand-primary/30 bg-brand-primary/5 p-5 shadow-glow">
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">
-            AI 分類結果
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">
+              AI 分類結果
+            </p>
+            {modelUsed && (
+              <span className="font-mono text-[11px] text-brand-muted">
+                {modelUsed} で分類
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <span
               className={`inline-flex items-center rounded-full px-4 py-1.5 text-base font-bold ${CATEGORY_STYLES[result].badge}`}
