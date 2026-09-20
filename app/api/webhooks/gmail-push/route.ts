@@ -79,13 +79,14 @@ function isValidPushToken(
 export async function POST(request: Request): Promise<Response> {
   const pushSecret = process.env.GMAIL_PUSH_SECRET;
 
-  // 環境変数未設定は「Push 未有効化」と判断して 501（設定ミス通知）
-  // ここで 200 を返すと Pub/Sub が「配信成功」と見なして通知を捨ててしまうため
-  // 明示的にエラーコードを返し、Vercel Function ログに気付ける形にする
+  // 環境変数未設定 = デモ運用時（Pub/Sub Push 未有効化）は 503 で無効化する。
+  // 実運用復帰時は Vercel で GMAIL_PUSH_SECRET を再設定すれば通常動作に戻る。
+  // 200 を返すと Pub/Sub が「配信成功」と見なして通知を捨ててしまうため
+  // 明示的にエラーコードを返し、内部設定名は含めない。
   if (!pushSecret) {
     return NextResponse.json(
-      { error: "GMAIL_PUSH_SECRET is not set" },
-      { status: 501 },
+      { error: "This endpoint is currently disabled." },
+      { status: 503 },
     );
   }
 

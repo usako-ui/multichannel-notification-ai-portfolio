@@ -60,11 +60,13 @@ export async function POST(request: Request): Promise<Response> {
   const signature = request.headers.get("x-line-signature");
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
 
-  // 環境変数未設定は設定ミス扱いで 500
+  // 環境変数未設定 = デモ運用時（LINE 連携なし）は 503 で無効化する。
+  // 実運用復帰時は Vercel で LINE_CHANNEL_SECRET を再設定すれば通常動作に戻る。
+  // 内部設定名を含めない汎用メッセージにして情報漏洩を避ける。
   if (!channelSecret) {
     return NextResponse.json(
-      { error: "LINE_CHANNEL_SECRET is not set" },
-      { status: 500 },
+      { error: "This endpoint is currently disabled." },
+      { status: 503 },
     );
   }
 

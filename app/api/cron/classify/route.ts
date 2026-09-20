@@ -53,11 +53,13 @@ type PendingInquiry = {
 export async function GET(request: Request): Promise<Response> {
   const cronSecret = process.env.CRON_SECRET;
 
-  // 環境変数未設定は設定ミス扱いで 500
+  // 環境変数未設定 = デモ運用時（Cron 連携なし）は 503 で無効化する。
+  // 実運用復帰時は Vercel で CRON_SECRET を再設定すれば通常動作に戻る。
+  // 内部設定名を含めない汎用メッセージにして情報漏洩を避ける。
   if (!cronSecret) {
     return NextResponse.json(
-      { error: "CRON_SECRET is not set" },
-      { status: 500 },
+      { error: "This endpoint is currently disabled." },
+      { status: 503 },
     );
   }
 
